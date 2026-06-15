@@ -1,0 +1,22 @@
+# pycache
+/src/__pycache__/
+
+# results
+/src/results/
+
+# quadrature data
+/src/quadrature/
+
+# sparse operators
+/src/sparse_operators/
+
+# mass inverse
+/src/mass/
+
+# time evolution
+/time_evol/__pycache__/
+
+# plotting
+/plot/coeff/
+/plot/figures/
+/plot/__pycache__/
