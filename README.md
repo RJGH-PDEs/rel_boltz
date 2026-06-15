@@ -1,5 +1,4 @@
-# Petrov-Galerkin Approach for the Relativistic Landau
+# Petrov-Galerkin Approach for the Relativistic Boltzmann
 
-Some initial experiments to compute the relativistic Landau equation, using a Petrov-Galerkin approach, with spherically-defined basis functions.
+Some initial experiments to compute the relativistic Boltzmann equation, using a Petrov-Galerkin approach, with spherically-defined basis functions.
 
-See 'RelLandau.pdf' for mathematical details.
