@@ -48,7 +48,6 @@ def G(rp, tp, pp, rq, tq, pq, tw, pw):
 
 # A test
 def test():
-    np.random.seed(42)
     print(f"{'Trial':<6} {'|p prime| num':>14} {'|p prime| ana':>14} {'|q prime| num':>14} {'|q prime| ana':>14}")
     print("-" * 65)
 
