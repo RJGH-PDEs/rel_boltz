@@ -1,3 +1,5 @@
+.DS_Store
+
 # pycache
 /src/__pycache__/
 
@@ -5,7 +7,6 @@
 /src/results/
 
 # quadrature data
-/src/quadrature/
 /src/quadratures/
 
 # sparse operators
