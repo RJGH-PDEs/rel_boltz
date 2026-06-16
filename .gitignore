@@ -6,6 +6,7 @@
 
 # quadrature data
 /src/quadrature/
+/src/quadratures/
 
 # sparse operators
 /src/sparse_operators/

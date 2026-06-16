@@ -20,6 +20,12 @@ def s_scalar(p_vec, q_vec):
     norm_q = np.linalg.norm(q_vec)
     return np.sqrt(2 * (norm_p * norm_q - np.dot(p_vec, q_vec)))
 
+# Kernel: 1 - (p.q)/(|p||q|) = s^2 / (2|p||q|)
+def kernel(p_vec, q_vec):
+    s    = s_scalar(p_vec, q_vec)
+    norm = np.linalg.norm(p_vec) * np.linalg.norm(q_vec)
+    return s**2 / (2 * norm)
+
 # Post-collisional momentum p' = F(p, q, omega)
 def F(rp, tp, pp, rq, tq, pq, tw, pw):
     p_vec = sph_to_cart(rp, tp, pp)
