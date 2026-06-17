@@ -34,9 +34,9 @@ def F(rp, tp, pp, rq, tq, pq, tw, pw):
 
     s     = s_scalar(p_vec, q_vec)
     D     = np.linalg.norm(p_vec) + np.linalg.norm(q_vec) + s
-    pq    = p_vec + q_vec
+    pq_vec = p_vec + q_vec
 
-    result = (pq / 2) * (1 + np.dot(pq, w_vec) / D) + (s / 2) * w_vec
+    result = (pq_vec / 2) * (1 + np.dot(pq_vec, w_vec) / D) + (s / 2) * w_vec
     return cart_to_sph(result)
 
 # Post-collisional momentum q' = G(p, q, omega)
@@ -47,9 +47,9 @@ def G(rp, tp, pp, rq, tq, pq, tw, pw):
 
     s     = s_scalar(p_vec, q_vec)
     D     = np.linalg.norm(p_vec) + np.linalg.norm(q_vec) + s
-    pq    = p_vec + q_vec
+    pq_vec = p_vec + q_vec
 
-    result = (pq / 2) * (1 - np.dot(pq, w_vec) / D) - (s / 2) * w_vec
+    result = (pq_vec / 2) * (1 - np.dot(pq_vec, w_vec) / D) - (s / 2) * w_vec
     return cart_to_sph(result)
 
 # A test

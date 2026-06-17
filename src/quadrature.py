@@ -73,6 +73,7 @@ def mass_quadrature(n_laguerre, n_lebedev):
     return quad
 
 def main():
+    # n_lebedev must be >= 2*l_max + 1 for angular integrals to be exact
     n_laguerre = 5
     n_lebedev  = 5
 
