@@ -57,10 +57,20 @@ def load_quad(path):
     with open(path, 'rb') as f:
         return pickle.load(f)
 
-# TODO: mass quadrature (3D: one radial + one Lebedev)
-# needed for the mass matrix computation
+# 3D quadrature for the mass matrix: one radial + one Lebedev
+# each point stored as [r, t, p, w]
 def mass_quadrature(n_laguerre, n_lebedev):
-    raise NotImplementedError
+    rlag = radial_quad(n_laguerre)
+    leb  = lebedev_quad(n_lebedev)
+
+    quad = []
+    for r, wr in rlag:
+        for e, we in leb:
+            t, p = cart_to_ang(e)
+            w    = wr * we
+            quad.append([r, t, p, w])
+
+    return quad
 
 def main():
     n_laguerre = 5
@@ -69,6 +79,10 @@ def main():
     print("building collision quadrature...")
     quad = collision_quadrature(n_laguerre, n_lebedev)
     save_quad(quad, './quadratures/collision.pkl')
+
+    print("building mass quadrature...")
+    mquad = mass_quadrature(n_laguerre, n_lebedev)
+    save_quad(mquad, './quadratures/mass.pkl')
 
 if __name__ == "__main__":
     main()

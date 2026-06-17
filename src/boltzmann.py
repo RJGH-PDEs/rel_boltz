@@ -1,102 +1,38 @@
-import sympy as sp
-# import quadrature unpacker
-from quadrature import unpack_quad, load_quad
-# import integrand
+import numpy as np
+from quadrature import load_quad
 from integrand import pieces, integrand
-# symbolic parts
-from kern import kernel
 
-# The Landau Operator
-def operator(k, f, g, test, quadrature):
-    # numerical integration
-    integral = 0
+# The Boltzmann collision operator: loops over quadrature and accumulates
+def operator(phi, ft, gt, quad):
+    result = 0
+    for pt in quad:
+        w     = pt[-1]
+        point = pt[:-1]
+        result += w * integrand(phi, ft, gt, point)
+    return result
 
-    for q in quadrature:
-        # unpack quadrature 
-        weight, points = unpack_quad(q)
-        # sample the function
-        sample = integrand(k, f, g, test, points)
-        # update sum
-        integral = integral + weight*sample
-        # print(sum)
+# TODO: parallel version of the operator (see parallel.py for the Landau version)
+# def operator_parallel(select, quad):
+#     phi, ft, gt = pieces(select)
+#     result      = operator(phi, ft, gt, quad)
+#     print("select:", select, "result:", result)
+#     return [select, result]
 
-    return integral
+# End-to-end test
+def operator_test(select):
+    quad = load_quad('./quadratures/collision.pkl')
+    print("quadrature points:", len(quad))
 
-# test the operator
-def operator_parallel(select, shared_data):
-    # unpack shared data
-    quad        = shared_data[0]
-    sym_kern    = shared_data[1]
+    phi, ft, gt = pieces(select)
+    result      = operator(phi, ft, gt, quad)
 
-    # produce the numpy pieces
-    k, f, g, test = pieces(select, sym_kern)
+    print("select:", select)
+    print("result:", result)
 
-    # compute the landau operator
-    result = operator(k, f, g, test, quad)
-
-    # print results
-    print("select: ", select, "result: ", result)
-
-    return [select, result]
-
-# test the operator
-def operator_test(select, energy, rel):
-    # load the quadrature
-    quad = load_quad()
-
-    # print the size of the quadrature
-    print("quadrature length: ", len(quad))
-    print()
-
-    # produce the symbolic pieces
-    verbose         = True
-    sym_kern        = kernel(energy, verbose, rel)
-    # print(sym_kern)
-    k, f, g, test   = pieces(select, sym_kern)
-
-    # compute the landau operator
-    result = operator(k, f, g, test, quad)
-
-    # print results
-    print("select: ", select)
-    print("result: ", result ) 
-
-# The main function
 def test():
-   # test function
-    k = 2
-    l = 2
-    m = 2
-    
-    # f
-    k1 = 2
-    l1 = 2
-    m1 = 2
-    
-    # g
-    k2 = 2
-    l2 = 2
-    m2 = 0
+    select = [[0, 0, 0], [1, 0, 0], [1, 0, 0]]
+    operator_test(select)
 
-    select = [[k,l,m],[k1,l1,m1],[k2,l2,m2]]
-
-    '''
-    Choose the energy
-    '''
-    # radial symbol
-    r = sp.symbols('r')
- 
-    # relativistic flag
-    rel = True
-    if rel:
-        energy = sp.sqrt(1+r**2)    # relativistic
-    else:
-        energy = (1/2)*r**2         # non-relativistic
-
-    # test the operator
-    operator_test(select, energy, rel)
-
-# main function
 def main():
     test()
 

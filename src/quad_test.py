@@ -39,6 +39,16 @@ def test_collision_quad(path):
     ok       = np.isclose(result, expected)
     print(f"Collision quad test: {result:.6f}  (expected {expected:.6f})  {'OK' if ok else 'FAIL'}")
 
+# Test 4: integrate f=1 over the mass quadrature
+# expected: 16 * 4pi
+def test_mass_quad(path):
+    from quadrature import load_quad
+    quad     = load_quad(path)
+    result   = sum(pt[-1] for pt in quad)
+    expected = 16 * 4 * np.pi
+    ok       = np.isclose(result, expected)
+    print(f"Mass quad test: {result:.6f}  (expected {expected:.6f})  {'OK' if ok else 'FAIL'}")
+
 def main():
     print("--- Radial quadrature ---")
     for n in [5, 9, 15]:
@@ -52,6 +62,10 @@ def main():
     print()
     print("--- Collision quadrature ---")
     test_collision_quad('./quadratures/collision.pkl')
+
+    print()
+    print("--- Mass quadrature ---")
+    test_mass_quad('./quadratures/mass.pkl')
 
 if __name__ == "__main__":
     main()
