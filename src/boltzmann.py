@@ -11,12 +11,15 @@ def operator(phi, ft, gt, quad):
         result += w * integrand(phi, ft, gt, point)
     return result
 
-# TODO: parallel version of the operator (see parallel.py for the Landau version)
-# def operator_parallel(select, quad):
-#     phi, ft, gt = pieces(select)
-#     result      = operator(phi, ft, gt, quad)
-#     print("select:", select, "result:", result)
-#     return [select, result]
+# Worker for parallel computation: builds basis callables from raw indices,
+# runs the full quadrature sum, returns [select, value]
+def operator_parallel(select, quad):
+    from basis import basis, f_tilde
+    phi = basis(  *select[0])
+    ft  = f_tilde(*select[1])
+    gt  = f_tilde(*select[2])
+    result = operator(phi, ft, gt, quad)
+    return [select, result]
 
 # End-to-end test
 # select = [[k, l, m], [k1, l1, m1], [k2, l2, m2]]
