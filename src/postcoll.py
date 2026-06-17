@@ -18,7 +18,7 @@ def cart_to_sph(v):
 def s_scalar(p_vec, q_vec):
     norm_p = np.linalg.norm(p_vec)
     norm_q = np.linalg.norm(q_vec)
-    return np.sqrt(2 * (norm_p * norm_q - np.dot(p_vec, q_vec)))
+    return np.sqrt(np.maximum(0.0, 2 * (norm_p * norm_q - np.dot(p_vec, q_vec))))
 
 # Kernel: 1 - (p.q)/(|p||q|) = s^2 / (2|p||q|)
 def kernel(p_vec, q_vec):

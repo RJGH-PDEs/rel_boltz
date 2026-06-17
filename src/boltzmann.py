@@ -19,6 +19,10 @@ def operator(phi, ft, gt, quad):
 #     return [select, result]
 
 # End-to-end test
+# select = [[k, l, m], [k1, l1, m1], [k2, l2, m2]]
+#   [k,  l,  m ]: test function phi
+#   [k1, l1, m1]: trial function f_tilde
+#   [k2, l2, m2]: trial function g_tilde
 def operator_test(select):
     quad = load_quad('./quadratures/collision.pkl')
     print("quadrature points:", len(quad))
@@ -30,7 +34,7 @@ def operator_test(select):
     print("result:", result)
 
 def test():
-    select = [[0, 0, 0], [1, 0, 0], [1, 0, 0]]
+    select = [[1, 0, 0], [0, 0, 0], [1, 0, 0]]
     operator_test(select)
 
 def main():
