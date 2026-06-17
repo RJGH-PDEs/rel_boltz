@@ -74,7 +74,7 @@ def mass_quadrature(n_laguerre, n_lebedev):
 
 def main():
     n_laguerre = 5
-    n_lebedev  = 3
+    n_lebedev  = 5
 
     print("building collision quadrature...")
     quad = collision_quadrature(n_laguerre, n_lebedev)

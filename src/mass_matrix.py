@@ -1,147 +1,107 @@
-# numpy, sympy
 import numpy as np
-import sympy as sp
 import pickle
-# basis
-from basis import basis, mu_const
-# integration
-from quadrature import unpack_mass_quad, load_mass_quad
-# index
+from scipy.special import roots_genlaguerre, eval_genlaguerre
+from basis import basis, f_tilde, mu_const
+from quadrature import load_quad
 from sparse import ind
 
-# the integrand for the mass matrix
-def integrand(f, phi, point):
-    # the evaluation point
-    r = point[0]
-    t = point[1]
-    p = point[2]
+# Integrand for one (i, j) pair at a single quadrature point
+# point = [r, t, p]  (weight excluded)
+def integrand(phi, ft, point):
+    r, t, p = point
+    return phi(r, t, p) * ft(r, t, p)
 
-    # parts
-    trial   = f(r, t, p)
-    test    = phi(r, t, p)
+# Compute one mass matrix entry M[i, j]
+def entry(phi, ft, quad):
+    result = 0.0
+    for pt in quad:
+        w     = pt[-1]
+        point = pt[:-1]
+        result += w * integrand(phi, ft, point)
+    return result
 
-    return trial*test
-
-# produces the pieces given a selection of the indices
-def pieces(select):
-    # test function
-    ki = select[0][0]
-    li = select[0][1]
-    mi = select[0][2]
-    # print(kj, lj, mj)
-
-    # trial function
-    kj = select[1][0]
-    lj = select[1][1]
-    mj = select[1][2]
-    # print(ki, li, mi)
-
-    # produce symbolic pieces
-    test_sym    = basis(ki, li, mi)
-    # print("test  function: ", test_sym)
-
-    # the two basis functiosn will include the mu constant
-    f_sym       = basis(kj, lj, mj)*mu_const(kj, lj)
-    # print("basis function: ", f_sym) 
-
-    # lambdafy
-    r, t, p = sp.symbols('r t p')
-
-    # numpy pieces
-    f       = sp.lambdify((r, t, p), f_sym, modules = 'numpy')              # trial function
-    test    = sp.lambdify((r, t, p), test_sym, modules = 'numpy')           # test function
-    
-    # return the pieces
-    return f, test
-
-# coefficient
-def coefficient(select, quad):
-    # produce the numpy pieces
-    f, test = pieces(select)
-
-    # numerical integration
-    partial_sum = 0
-    for quad in quad:
-        # unpack the quadrature 
-        weight, points = unpack_mass_quad(quad)
-        # perform the partial sum
-
-        sample = integrand(f, test, points)
-        partial_sum = partial_sum + weight*sample
-
-    return partial_sum
-
-# test a coefficient
-def coeff_test():
-    # select
-    test   = [0, 1, 1]
-    basis  = [0, 1, 1]
-    select = [test, basis]
-    
-    # obtain the mass quadrature
-    quad = load_mass_quad()
-
-    # test
-    coeff = coefficient(select, quad)
-    print("for: ", select, " the coeff is: ", coeff)
-
-# builds the mass matrix 
-def mass_matrix(n):
-    # number of degrees of freedom, max value "l" can take
+# Build the full mass matrix for a given n
+# indices run over k in [0,n), l in [0,n), m in [-l, l]
+def mass_matrix(n, quad):
     N = n**3
+    M = np.zeros((N, N))
 
-    # obtain the mass quadrature
-    quad = load_mass_quad()
+    for ki in range(n):
+        for li in range(n):
+            for mi in range(-li, li+1):
+                phi = basis(ki, li, mi)
+                i   = ind(ki, li, mi, n)
 
-    # build the empty matrix
-    M = np.zeros((N,N))
+                for kj in range(n):
+                    for lj in range(n):
+                        for mj in range(-lj, lj+1):
+                            ft = f_tilde(kj, lj, mj)
+                            j  = ind(kj, lj, mj, n)
 
-    # iterate over test functions
-    for k in range(0, n):
-        for l in range(0, n):
-            for m in range(-l, l+1):
+                            M[i, j] = entry(phi, ft, quad)
 
-                # iterate over all basis functions
-                for k1 in range(0, n):
-                    for l1 in range(0, n):
-                        for m1 in range(-l1, l1+1):
-
-                            # select
-                            test   = [k, l, m]
-                            basis  = [k1, l1, m1]
-                            select = [test, basis]
-                            
-                            # indices
-                            i = ind(k, l, m, n)     # test 
-                            j = ind(k1, l1, m1, n)  # trial
-                            M[i][j] = coefficient(select, quad)
- 
     return M
 
-# saves the mass inverse as pkl
-def save_inv_mass():
-    # value of n, determines the number of dof
-    n = 3
+# 1D radial mass matrix using spherical harmonic orthogonality:
+# M[i,j] = 0 unless l_i == l_j and m_i == m_j
+# M[i,j] = mu_{kj,l} * 2^{2l+3} * sum_s w_s * L_{ki}^{2(l+1)}(2x_s) * L_{kj}^{2(l+1)}(2x_s)
+def mass_matrix_1d(n, n_laguerre=15):
+    N = n**3
+    M = np.zeros((N, N))
 
-    # coeff_test()
-    m = mass_matrix(n)
+    for ki in range(n):
+        for li in range(n):
+            for mi in range(-li, li+1):
+                i = ind(ki, li, mi, n)
 
-    # invert
-    m_inv = np.linalg.inv(m)
+                for kj in range(n):
+                    for lj in range(n):
+                        for mj in range(-lj, lj+1):
+                            j = ind(kj, lj, mj, n)
 
-    # check that these are inverses
-    # print(np.dot(m, m_inv))
+                            # orthogonality: zero unless l and m match
+                            if li != lj or mi != mj:
+                                M[i, j] = 0.0
+                                continue
 
-    # save full quadrature
-    with open('./mass/mass_inv.pkl', 'wb') as file:
-        pickle.dump(m_inv, file)
+                            l     = li
+                            alpha = 2*(l + 1)
+                            x, w  = roots_genlaguerre(n_laguerre, alpha)
+                            factor = mu_const(kj, l) * 2**(2*l + 3)
 
-    print("mass inverse has been saved.")
- 
-# The main function
+                            M[i, j] = factor * np.sum(
+                                w * eval_genlaguerre(ki, alpha, 2*x)
+                                  * eval_genlaguerre(kj, alpha, 2*x)
+                            )
+
+    return M
+
+def save_mass(M, path):
+    with open(path, 'wb') as f:
+        pickle.dump(M, f)
+    print(f"mass matrix saved to {path}")
+
+def test():
+    n    = 3
+    quad = load_quad('./quadratures/mass.pkl')
+
+    print(f"computing 3D mass matrix (n={n})...")
+    M3d = mass_matrix(n, quad)
+
+    print(f"computing 1D mass matrix (n={n})...")
+    M1d = mass_matrix_1d(n)
+
+    print("\nM 3D =")
+    print(np.round(M3d, 4))
+
+    print("\nM 1D =")
+    print(np.round(M1d, 4))
+
+    diff = np.max(np.abs(M3d - M1d))
+    print(f"\nmax difference: {diff:.2e}  {'OK' if diff < 1e-6 else 'FAIL'}")
+
 def main():
-    # coeff_test()
-    save_inv_mass() # save mass matrix
+    test()
 
 if __name__ == "__main__":
     main()
