@@ -16,13 +16,11 @@ def ind(k, ll, m, n):
     return (n*n)*k + lm_index(ll, m)
 
 def test_indices():
-    # selection
-    k = 2
-    l = 2
-    m = 2
-    
-    n = 3
-    print(ind(k, l, m, n))
+    n = 2
+    invariants = [[0,0,0], [0,1,-1], [0,1,0], [0,1,1], [1,0,0]]
+    for klm in invariants:
+        k, l, m = klm
+        print(f"[{k},{l},{m}] -> {ind(k, l, m, n)}")
 
 # loads and returns data
 def load_operator(name):
@@ -206,4 +204,4 @@ def analyze(n=3, tol=1e-4, file_name='results/collision_tensor.pkl',
 
 
 if __name__ == "__main__":
-    analyze(n=2)
+    test_indices()

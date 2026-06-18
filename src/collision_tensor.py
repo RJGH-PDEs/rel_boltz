@@ -25,7 +25,16 @@ def create_param_iterable(n):
                             for k2 in range(n):
                                 for l2 in range(n):
                                     for m2 in range(-l2, l2+1):
-                                        param.append([[k,l,m],[k1,l1,m1],[k2,l2,m2]])
+                                        select = [[k,l,m],[k1,l1,m1],[k2,l2,m2]]
+
+                                        # Sparsity rules — skip known zeros to avoid
+                                        # computing entries that vanish by symmetry.
+                                        # Uncomment when dense verification is complete.
+                                        # from sparse_rules import andrea, cai
+                                        # if not (andrea(select) and cai(select)):
+                                        #     continue
+
+                                        param.append(select)
     print(f"total entries to compute: {len(param)}")
     return param
 
