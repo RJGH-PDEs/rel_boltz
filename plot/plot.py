@@ -1,19 +1,23 @@
+import os
 import matplotlib.pyplot as plt
 import numpy as np
 import pickle
 from lc import linear_comb
 
+os.makedirs("figures", exist_ok=True)
+os.makedirs("coeff", exist_ok=True)
+
 '''
 flags
 '''
 # truncation parameter (must match the tensor used)
-n = 2
+N = 2
 # time
 time = 1000
 # flag to save the figure
 save = True
 # either to use hard-coded coefficients, or open file
-hard_coded_coeff = False
+hard_coded_coeff = True
 # show the plot, or just save it
 show = False
 
@@ -74,10 +78,11 @@ print(p)
 f = np.zeros(n)
 
 if hard_coded_coeff:
-    # coefficients
-    coeff = np.zeros(n**3)
-    coeff[0] = 1
-    plt_name = "hard-coded coefficients"
+    # coefficients: equilibrium [0,0,0]  radial perturbation [1,0,0]
+    coeff = np.zeros(N**3)
+    coeff[0] =   2   # [0,0,0]: equilibrium
+    coeff[4] =  -1   # [1,0,0]: radial perturbation
+    plt_name = "equilibrium + radial perturbation"
 else: 
     file_name = "coeff/" + str(time) + ".pkl"
     with open(file_name, 'rb') as file:
@@ -85,7 +90,7 @@ else:
     plt_name = 'Solution at after ' + str(time) + ' iterations' 
 
 for i in range(n):
-    func_val = linear_comb(coeff, r[i], t[i], p[i], n)
+    func_val = linear_comb(coeff, r[i], t[i], p[i], N)
     f[i] = np.exp(-r[i] / 2) * func_val
 
 # Create the plot
