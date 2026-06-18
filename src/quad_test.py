@@ -126,5 +126,37 @@ def main():
     for n in [3, 5, 7]:
         test_lebedev_x2(n)
 
+# Quadrature convergence test for n=3 truncation.
+# We evaluate a single high-degree collision tensor entry [[2,2,2],[2,2,2],[2,2,2]]
+# at increasing quadrature resolutions. This is the hardest entry to integrate
+# accurately (highest k and l in all three indices), so if the value stabilizes
+# here, the quadrature is sufficient for the full n=3 tensor.
+def test_quadrature_convergence():
+    import pickle
+    import os
+    from quadrature import collision_quadrature, save_quad, load_quad
+    from boltzmann import operator_test
+
+    select = [[2, 2, 0], [2, 2, 0], [2, 0, 0]]
+    configs = [
+        (6, 5),
+        (7, 7),
+        (8, 9),
+    ]
+
+    print("--- Quadrature convergence test (select = [[2,2,2],[2,2,2],[2,2,2]]) ---")
+    for n_lag, n_leb in configs:
+        path = f'./quadratures/conv_lag{n_lag}_leb{n_leb}.pkl'
+        if not os.path.exists(path):
+            quad = collision_quadrature(n_lag, n_leb)
+            save_quad(quad, path)
+        from boltzmann import operator
+        from integrand import pieces
+        quad = load_quad(path)
+        phi, ft, gt = pieces(select)
+        result = operator(phi, ft, gt, quad)
+        print(f"  n_laguerre={n_lag}, n_lebedev={n_leb}:  {result:.10f}  ({len(quad)} points)")
+
+
 if __name__ == "__main__":
-    main()
+    test_quadrature_convergence()
