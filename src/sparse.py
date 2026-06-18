@@ -1,4 +1,5 @@
-import pickle 
+import os
+import pickle
 import numpy as np
 from scipy.sparse import csr_matrix
 
@@ -34,6 +35,7 @@ def load_operator(name):
 
 # save operator 
 def save_sparse_op(name, operator):
+    os.makedirs(os.path.dirname(name), exist_ok=True)
     with open(name, 'wb') as file:
         pickle.dump(operator, file)
 
@@ -173,36 +175,35 @@ def sparse_op(do):
     print("finished computing the sparse tensor (list of sparse matrices).")
     return sparse
 
-# main funtion
-def main():
-    n   = 3
-    tol = 0.0001    # tolerance for the nonzeros
+# Print all entries of the collision tensor for manual inspection
+def print_tensor(file_name='results/collision_tensor.pkl'):
+    op = load_operator(file_name)
+    print(f"total entries: {len(op)}")
+    print()
+    for entry in op:
+        select, value = entry
+        print(f"select: {select}  value: {value}")
 
-    file_name = 'results/rel_non_cons.pkl'
-    
-    print("analyzing for file with name: ", file_name)
+
+# Full pipeline: extract non-zeros, analyse sparsity, build and save sparse operator
+def analyze(n=3, tol=1e-4, file_name='results/collision_tensor.pkl',
+            sparse_name='sparse_operators/collision_tensor.pkl'):
+    print("analyzing file: ", file_name)
     op = load_operator(file_name)   # load operator pkl
     nz = non_zeros(op, tol)         # extract non zeros
-    analyse(nz)                     # analyse sparsity 
-    
+    analyse(nz)                     # analyse sparsity
+
     si = simple_index(nz, n)        # with simple index
     do = dense_op(si, n)            # dense operator
     so = sparse_op(do)              # sparse operator
-    
-    # compute the size of the sparse operator
-    print('sparse operator length: ', len(so))
 
-    # show the number of non-zeros
+    print('sparse operator length: ', len(so))
     print('number of non-zeros per matrix: ')
     for slice in so:
         print(slice.nnz)
- 
-    # save it 
-    sparse_name = "sparse_operators/rel_non_cons.pkl" 
+
     save_sparse_op(sparse_name, so)
 
-    return 0
-    
-# execute main funtion
+
 if __name__ == "__main__":
-    main()
+    analyze(n=2)
