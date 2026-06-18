@@ -2,6 +2,7 @@ import multiprocessing
 import os
 import pickle
 import time
+from functools import partial
 
 from quadrature import load_quad
 from boltzmann import operator_parallel
@@ -39,6 +40,11 @@ def create_param_iterable(n):
     return param
 
 
+# Single-argument worker for imap_unordered (quad is fixed via partial)
+def _worker(select, quad):
+    return operator_parallel(select, quad)
+
+
 # Compute the full collision tensor Q_{i,jk} in parallel.
 # The quadrature is loaded once in the parent process and passed to all workers
 # to avoid redundant disk reads. Results are saved as a list of [select, value].
@@ -51,12 +57,20 @@ def compute_tensor(n, quad_path='./quadratures/collision.pkl',
     print(f"quadrature points: {len(quad)}")
     print(f"workers: {multiprocessing.cpu_count()}")
 
-    # each worker receives (select, quad) and returns [select, value]
+    worker = partial(_worker, quad=quad)
+    total  = len(params)
+    mile   = max(1, total // 100)
+
     start = time.time()
     with multiprocessing.Pool(processes=multiprocessing.cpu_count()) as pool:
-        results = pool.starmap(operator_parallel, [(sel, quad) for sel in params])
-    elapsed = time.time() - start
+        results = []
+        for i, result in enumerate(pool.imap_unordered(worker, params)):
+            results.append(result)
+            if (i + 1) % mile == 0:
+                pct = 100 * (i + 1) / total
+                print(f"  {pct:.0f}%  ({i+1}/{total})  elapsed: {time.time()-start:.1f}s")
 
+    elapsed = time.time() - start
     print(f"elapsed: {elapsed:.2f}s")
 
     # save as list of [select, value] for later sparsity analysis
