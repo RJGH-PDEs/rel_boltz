@@ -100,8 +100,17 @@ def test():
     diff = np.max(np.abs(M3d - M1d))
     print(f"\nmax difference: {diff:.2e}  {'OK' if diff < 1e-6 else 'FAIL'}")
 
+def generate(n, quad_path='./quadratures/mass.pkl', out_path='./mass/mass.pkl'):
+    import os
+    quad = load_quad(quad_path)
+    print(f"computing mass matrix (n={n})...")
+    M = mass_matrix_1d(n)
+    os.makedirs(os.path.dirname(out_path), exist_ok=True)
+    save_mass(M, out_path)
+    return M
+
 def main():
-    test()
+    generate(n=2)
 
 if __name__ == "__main__":
     main()
