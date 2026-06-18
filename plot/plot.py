@@ -1,12 +1,14 @@
 import matplotlib.pyplot as plt
 import numpy as np
-from lc import linear_comb
 import pickle
+from lc import linear_comb
 
 '''
 flags
 '''
-# time 
+# truncation parameter (must match the tensor used)
+n = 2
+# time
 time = 1000
 # flag to save the figure
 save = True
@@ -71,12 +73,10 @@ print(p)
 # will store the function
 f = np.zeros(n)
 
-if hard_coded_coeff: 
+if hard_coded_coeff:
     # coefficients
-    coeff = np.zeros(27)
+    coeff = np.zeros(n**3)
     coeff[0] = 1
-    coeff[1] = 0
-    coeff[9] = 0
     plt_name = "hard-coded coefficients"
 else: 
     file_name = "coeff/" + str(time) + ".pkl"
@@ -84,10 +84,9 @@ else:
         coeff = pickle.load(file)
     plt_name = 'Solution at after ' + str(time) + ' iterations' 
 
-# counter
 for i in range(n):
-    func_val = linear_comb(coeff, r[i], t[i], p[i])
-    f[i] = np.exp((-r[i]**2)/2)*func_val
+    func_val = linear_comb(coeff, r[i], t[i], p[i], n)
+    f[i] = np.exp(-r[i] / 2) * func_val
 
 # Create the plot
 plt.plot(x, f, marker='o')  # marker='o' will put points at each (x, y)

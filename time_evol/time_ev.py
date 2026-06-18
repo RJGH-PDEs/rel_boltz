@@ -3,6 +3,10 @@ import pickle
 from bilinear import landau
 from bilinear import update
 
+# TODO: this file needs to be carefully rewritten to handle the time-dependent
+# prefactor arising from the expansion of spacetime (via the self-similar
+# change of variables). The current Euler step is a placeholder only.
+
 # save flag
 save = True
 
