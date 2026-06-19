@@ -98,4 +98,4 @@ def analyze(tensor_path, tol=1e-1):
 
 if __name__ == "__main__":
     from collision_tensor import tensor_name
-    analyze(tensor_name(2, 7, 7, use_sparsity=False))
+    analyze(tensor_name(3, 7, 9, use_sparsity=True))
