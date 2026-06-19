@@ -75,7 +75,7 @@ def mass_quadrature(n_laguerre, n_lebedev):
 def main():
     # n_lebedev must be >= 2*l_max + 1 for angular integrals to be exact
     n_laguerre = 7
-    n_lebedev  = 7
+    n_lebedev  = 9
 
     print("building collision quadrature...")
     quad = collision_quadrature(n_laguerre, n_lebedev)

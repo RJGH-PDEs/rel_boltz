@@ -3,7 +3,8 @@ import os
 import pickle
 import time
 
-from boltzmann import operator_parallel, init_worker
+from boltzmann import operator_parallel_numba as operator_parallel, init_worker
+from sparse_rules import andrea, cai
 
 
 # Build the flat list of all index triples (select) to compute.
@@ -13,7 +14,7 @@ from boltzmann import operator_parallel, init_worker
 #   [k2, l2, m2]: trial function g_tilde (second argument of Q)
 # k, l run over [0, n); m runs over [-l, l].
 # No sparsity skipping — all entries included so we can inspect the full pattern.
-def create_param_iterable(n):
+def create_param_iterable(n, use_sparsity=True):
     param = []
     for k in range(n):
         for l in range(n):
@@ -28,13 +29,11 @@ def create_param_iterable(n):
 
                                         # Sparsity rules — skip known zeros to avoid
                                         # computing entries that vanish by symmetry.
-                                        # Uncomment when dense verification is complete.
-                                        # from sparse_rules import andrea, cai
-                                        # if not (andrea(select) and cai(select)):
-                                        #     continue
+                                        if use_sparsity and not (andrea(select) and cai(select)):
+                                            continue
 
                                         param.append(select)
-    print(f"total entries to compute: {len(param)}")
+    print(f"total entries to compute: {len(param)}  (sparsity={'on' if use_sparsity else 'off'})")
     return param
 
 
@@ -43,8 +42,9 @@ def create_param_iterable(n):
 # Each worker loads the quadrature independently to avoid serialization overhead.
 # Results are saved as a list of [select, value].
 def compute_tensor(n, quad_path='./quadratures/collision.pkl',
-                   out_path='./results/collision_tensor.pkl'):
-    params = create_param_iterable(n)
+                   out_path='./results/collision_tensor.pkl',
+                   use_sparsity=True):
+    params = create_param_iterable(n, use_sparsity)
     total  = len(params)
 
     print(f"workers: {multiprocessing.cpu_count()}")
@@ -71,4 +71,4 @@ def compute_tensor(n, quad_path='./quadratures/collision.pkl',
 
 
 if __name__ == "__main__":
-    compute_tensor(n=2)
+    compute_tensor(n=3, use_sparsity=True)

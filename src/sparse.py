@@ -184,7 +184,7 @@ def print_tensor(file_name='results/collision_tensor.pkl'):
 
 
 # Full pipeline: extract non-zeros, analyse sparsity, build and save sparse operator
-def analyze(n=3, tol=1e-4, file_name='results/collision_tensor.pkl',
+def analyze(n=3, tol=1e-1, file_name='results/collision_tensor.pkl',
             sparse_name='sparse_operators/collision_tensor.pkl'):
     print("analyzing file: ", file_name)
     op = load_operator(file_name)   # load operator pkl
@@ -204,4 +204,4 @@ def analyze(n=3, tol=1e-4, file_name='results/collision_tensor.pkl',
 
 
 if __name__ == "__main__":
-    test_indices()
+    analyze(n=3)

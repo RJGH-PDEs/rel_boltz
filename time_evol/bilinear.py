@@ -17,8 +17,11 @@ def update(a, b):
         a[i] = val
 
 
-def test():
-    n = 2
+def fmt(result, tol=1e-3):
+    return np.where(np.abs(result) < tol, 0.0, result)
+
+
+def test(n=3):
     size = n**3  # number of basis functions
 
     # load sparse collision tensor
@@ -32,12 +35,11 @@ def test():
         f = np.random.uniform(-1, 1, size)
         boltzmann(so, f, result)
         print(f"trial {trial+1}  f: {np.round(f, 2)}")
-        print(f"          Q(f,f): {result}")
+        print(f"          Q(f,f): {fmt(result)}")
         print()
 
 
-def test_specific():
-    n = 2
+def test_specific(n=3):
     size = n**3
 
     with open('../src/sparse_operators/collision_tensor.pkl', 'rb') as file:
@@ -45,24 +47,13 @@ def test_specific():
 
     result = np.zeros(size)
 
-    # index reminder for n=2:
-    # 0=[0,0,0]  1=[0,1,-1]  2=[0,1,0]  3=[0,1,1]
-    # 4=[1,0,0]  5=[1,1,-1]  6=[1,1,0]  7=[1,1,1]
-
-    candidates = [
-        ("equilibrium + l=1 perturbation",     [1.0, 0.1, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]),
-        ("equilibrium + k=1,l=0 perturbation", [1.0, 0.0, 0.0, 0.0, 0.1, 0.0, 0.0, 0.0]),
-        ("equilibrium + k=1,l=1 perturbation", [1.0, 0.0, 0.0, 0.0, 0.0, 0.1, 0.0, 0.0]),
-        ("mix l=0 and l=1 modes",              [1.0, 0.1, 0.0, 0.0, 0.1, 0.1, 0.0, 0.0]),
-        ("all modes equally perturbed",        [1.0, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]),
-    ]
-
-    for name, coeffs in candidates:
-        f = np.array(coeffs)
-        boltzmann(so, f, result)
-        print(f"--- {name} ---")
-        print(f"Q(f,f): {result}")
-        print()
+    # Juttner equilibrium: f[0]=1, rest zero
+    f = np.zeros(size)
+    f[0] = 1.0
+    boltzmann(so, f, result)
+    print("--- Juttner equilibrium (f[0]=1, rest 0) ---")
+    print(f"Q(f,f): {fmt(result)}")
+    print()
 
 def main():
     test()
