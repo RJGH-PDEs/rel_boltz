@@ -2,10 +2,8 @@ import multiprocessing
 import os
 import pickle
 import time
-from functools import partial
 
-from quadrature import load_quad
-from boltzmann import operator_parallel
+from boltzmann import operator_parallel, init_worker
 
 
 # Build the flat list of all index triples (select) to compute.
@@ -40,35 +38,25 @@ def create_param_iterable(n):
     return param
 
 
-# Single-argument worker for imap_unordered (quad is fixed via partial)
-def _worker(select, quad):
-    return operator_parallel(select, quad)
-
 
 # Compute the full collision tensor Q_{i,jk} in parallel.
-# The quadrature is loaded once in the parent process and passed to all workers
-# to avoid redundant disk reads. Results are saved as a list of [select, value].
+# Each worker loads the quadrature independently to avoid serialization overhead.
+# Results are saved as a list of [select, value].
 def compute_tensor(n, quad_path='./quadratures/collision.pkl',
                    out_path='./results/collision_tensor.pkl'):
-    # load quadrature once — shared across all workers
-    quad   = load_quad(quad_path)
     params = create_param_iterable(n)
+    total  = len(params)
 
-    print(f"quadrature points: {len(quad)}")
     print(f"workers: {multiprocessing.cpu_count()}")
 
-    worker = partial(_worker, quad=quad)
-    total  = len(params)
-    mile   = max(1, total // 100)
-
     start = time.time()
-    with multiprocessing.Pool(processes=multiprocessing.cpu_count()) as pool:
+    with multiprocessing.Pool(processes=multiprocessing.cpu_count(),
+                              initializer=init_worker,
+                              initargs=(quad_path,)) as pool:
         results = []
-        for i, result in enumerate(pool.imap_unordered(worker, params)):
+        for i, result in enumerate(pool.imap_unordered(operator_parallel, params)):
             results.append(result)
-            if (i + 1) % mile == 0:
-                pct = 100 * (i + 1) / total
-                print(f"  {pct:.0f}%  ({i+1}/{total})  elapsed: {time.time()-start:.1f}s")
+            print(f"  {i+1}/{total}  elapsed: {time.time()-start:.1f}s", flush=True)
 
     elapsed = time.time() - start
     print(f"elapsed: {elapsed:.2f}s")

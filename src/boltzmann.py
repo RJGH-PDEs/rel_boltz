@@ -11,14 +11,20 @@ def operator(phi, ft, gt, quad):
         result += w * integrand(phi, ft, gt, point)
     return result
 
-# Worker for parallel computation: builds basis callables from raw indices,
-# runs the full quadrature sum, returns [select, value]
-def operator_parallel(select, quad):
+# Worker for parallel computation: uses a global quadrature loaded once per
+# worker process via init_worker — avoids repeated disk reads per task.
+_quad = None
+
+def init_worker(quad_path):
+    global _quad
+    _quad = load_quad(quad_path)
+
+def operator_parallel(select):
     from basis import basis, f_tilde
-    phi = basis(  *select[0])
-    ft  = f_tilde(*select[1])
-    gt  = f_tilde(*select[2])
-    result = operator(phi, ft, gt, quad)
+    phi    = basis(  *select[0])
+    ft     = f_tilde(*select[1])
+    gt     = f_tilde(*select[2])
+    result = operator(phi, ft, gt, _quad)
     return [select, result]
 
 # End-to-end test
