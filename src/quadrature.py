@@ -47,15 +47,17 @@ def collision_quadrature(n_laguerre, n_lebedev):
 
     return quad
 
-# Save/load
-def save_quad(quad, path):
+# Save/load — stored as dict with metadata so parameters are self-describing
+def save_quad(quad, path, n_laguerre, n_lebedev):
+    data = {'quad': quad, 'n_laguerre': n_laguerre, 'n_lebedev': n_lebedev}
     with open(path, 'wb') as f:
-        pickle.dump(quad, f)
+        pickle.dump(data, f)
     print(f"quadrature saved to {path}  ({len(quad)} points)")
 
 def load_quad(path):
     with open(path, 'rb') as f:
-        return pickle.load(f)
+        data = pickle.load(f)
+    return data['quad'], data['n_laguerre'], data['n_lebedev']
 
 # 3D quadrature for the mass matrix: one radial + one Lebedev
 # each point stored as [r, t, p, w]
@@ -72,18 +74,20 @@ def mass_quadrature(n_laguerre, n_lebedev):
 
     return quad
 
+def quad_name(kind, n_laguerre, n_lebedev):
+    return f'./quadratures/{kind}_lag{n_laguerre}_leb{n_lebedev}.pkl'
+
 def main():
-    # n_lebedev must be >= 2*l_max + 1 for angular integrals to be exact
     n_laguerre = 7
-    n_lebedev  = 9
+    n_lebedev  = 7
 
     print("building collision quadrature...")
     quad = collision_quadrature(n_laguerre, n_lebedev)
-    save_quad(quad, './quadratures/collision.pkl')
+    save_quad(quad, quad_name('collision', n_laguerre, n_lebedev), n_laguerre, n_lebedev)
 
     print("building mass quadrature...")
     mquad = mass_quadrature(n_laguerre, n_lebedev)
-    save_quad(mquad, './quadratures/mass.pkl')
+    save_quad(mquad, quad_name('mass', n_laguerre, n_lebedev), n_laguerre, n_lebedev)
 
 if __name__ == "__main__":
     main()

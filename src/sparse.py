@@ -22,14 +22,11 @@ def test_indices():
         k, l, m = klm
         print(f"[{k},{l},{m}] -> {ind(k, l, m, n)}")
 
-# loads and returns data
+# loads and returns data + metadata
 def load_operator(name):
-    # load
     with open(name, 'rb') as file:
         data = pickle.load(file)
-
-    # return
-    return data
+    return data['results'], data['n'], data['n_laguerre'], data['n_lebedev']
 
 # save operator 
 def save_sparse_op(name, operator):
@@ -184,10 +181,16 @@ def print_tensor(file_name='results/collision_tensor.pkl'):
 
 
 # Full pipeline: extract non-zeros, analyse sparsity, build and save sparse operator
-def analyze(n=3, tol=1e-1, file_name='results/collision_tensor.pkl',
-            sparse_name='sparse_operators/collision_tensor.pkl'):
-    print("analyzing file: ", file_name)
-    op = load_operator(file_name)   # load operator pkl
+def sparse_name(n, n_laguerre, n_lebedev):
+    return f'sparse_operators/sparse_n{n}_lag{n_laguerre}_leb{n_lebedev}.pkl'
+
+def analyze(tensor_path, tol=1e-1):
+    from collision_tensor import tensor_name
+
+    print("analyzing file: ", tensor_path)
+    op, n, n_laguerre, n_lebedev = load_operator(tensor_path)
+    out_name = sparse_name(n, n_laguerre, n_lebedev)
+
     nz = non_zeros(op, tol)         # extract non zeros
     analyse(nz)                     # analyse sparsity
 
@@ -200,8 +203,11 @@ def analyze(n=3, tol=1e-1, file_name='results/collision_tensor.pkl',
     for slice in so:
         print(slice.nnz)
 
-    save_sparse_op(sparse_name, so)
+    save_sparse_op(out_name, so)
 
 
 if __name__ == "__main__":
-    analyze(n=3)
+    from collision_tensor import tensor_name
+    # choose file to analyze
+    n, n_laguerre, n_lebedev = 2, 7, 7 
+    analyze(tensor_name(n, n_laguerre, n_lebedev, use_sparsity=False))

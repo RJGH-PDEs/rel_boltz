@@ -5,6 +5,7 @@ import time
 
 from boltzmann import operator_parallel_numba as operator_parallel, init_worker
 from sparse_rules import andrea, cai
+from quadrature import quad_name
 
 
 # Build the flat list of all index triples (select) to compute.
@@ -41,9 +42,14 @@ def create_param_iterable(n, use_sparsity=True):
 # Compute the full collision tensor Q_{i,jk} in parallel.
 # Each worker loads the quadrature independently to avoid serialization overhead.
 # Results are saved as a list of [select, value].
-def compute_tensor(n, quad_path='./quadratures/collision.pkl',
-                   out_path='./results/collision_tensor.pkl',
-                   use_sparsity=True):
+def tensor_name(n, n_laguerre, n_lebedev, use_sparsity):
+    sp = 'sparse' if use_sparsity else 'dense'
+    return f'./results/tensor_n{n}_lag{n_laguerre}_leb{n_lebedev}_{sp}.pkl'
+
+def compute_tensor(n, quad_path, use_sparsity=True):
+    from quadrature import load_quad
+    _, n_laguerre, n_lebedev = load_quad(quad_path)
+    out_path = tensor_name(n, n_laguerre, n_lebedev, use_sparsity)
     params = create_param_iterable(n, use_sparsity)
     total  = len(params)
 
@@ -61,14 +67,16 @@ def compute_tensor(n, quad_path='./quadratures/collision.pkl',
     elapsed = time.time() - start
     print(f"elapsed: {elapsed:.2f}s")
 
-    # save as list of [select, value] for later sparsity analysis
     os.makedirs(os.path.dirname(out_path), exist_ok=True)
     with open(out_path, 'wb') as f:
-        pickle.dump(results, f)
+        pickle.dump({'results': results, 'n': n,
+                     'n_laguerre': n_laguerre, 'n_lebedev': n_lebedev,
+                     'use_sparsity': use_sparsity}, f)
     print(f"saved to {out_path}  ({len(results)} entries)")
 
     return results
 
 
 if __name__ == "__main__":
-    compute_tensor(n=3, use_sparsity=True)
+    quad_path = quad_name('collision', 7, 7)
+    compute_tensor(n=2, quad_path=quad_path, use_sparsity=False)
