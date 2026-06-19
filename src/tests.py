@@ -3,7 +3,7 @@ Verification tests for the collision tensor pipeline.
 
 Sections:
   1. Quadrature tests       — radial, Lebedev, collision, mass
-  2. Basis tests            — numba basis vs analytical spot checks
+  2. Basis tests            — numba basis vs scipy spot checks
   3. Conservation tests     — Lebedev sweep for conservation entries
   4. Quadrature convergence — Laguerre/Lebedev order sweep for a hard entry
   5. Compare tensors        — diff two saved tensor pkl files
@@ -17,8 +17,7 @@ import numpy as np
 def test_radial(n):
     from scipy.special import roots_genlaguerre
     x, w = roots_genlaguerre(n, 2)
-    pts, wts = 2 * x, 8 * w
-    result = np.sum(wts * pts)
+    result = np.sum(8 * w * 2 * x)
     print(f"Radial test (n={n}): {result:.10f}  (expected 96)")
 
 def test_lebedev(n):
@@ -27,37 +26,35 @@ def test_lebedev(n):
     result = np.sum(4 * np.pi * w)
     print(f"Lebedev test (n={n}): {result:.10f}  (expected {4*np.pi:.10f})")
 
-def test_collision_quad(path='./quadratures/collision.pkl'):
-    from quadrature import load_quad
-    quad     = load_quad(path)
+def test_collision_quad(n_laguerre=7, n_lebedev=7):
+    from quadrature import load_quad, quad_name
+    quad, _, _ = load_quad(quad_name('collision', n_laguerre, n_lebedev))
     result   = sum(pt[-1] for pt in quad)
     expected = 256 * (4*np.pi)**3
     print(f"Collision quad: {result:.6f}  (expected {expected:.6f})  {'OK' if np.isclose(result, expected) else 'FAIL'}")
 
-def test_mass_quad(path='./quadratures/mass.pkl'):
-    from quadrature import load_quad
-    quad     = load_quad(path)
+def test_mass_quad(n_laguerre=7, n_lebedev=7):
+    from quadrature import load_quad, quad_name
+    quad, _, _ = load_quad(quad_name('mass', n_laguerre, n_lebedev))
     result   = sum(pt[-1] for pt in quad)
     expected = 16 * 4 * np.pi
     print(f"Mass quad:      {result:.6f}  (expected {expected:.6f})  {'OK' if np.isclose(result, expected) else 'FAIL'}")
 
-def run_quadrature_tests():
+def run_quadrature_tests(n_laguerre=7, n_lebedev=7):
     print("=== Quadrature tests ===")
     for n in [5, 9, 15]:
         test_radial(n)
     for n in [7, 11, 15]:
         test_lebedev(n)
-    test_collision_quad()
-    test_mass_quad()
+    test_collision_quad(n_laguerre, n_lebedev)
+    test_mass_quad(n_laguerre, n_lebedev)
 
 
 # ── 2. Basis tests ───────────────────────────────────────────────────────────
 
 def run_basis_tests(n_random=10):
-    """Compare numba basis against scipy at random points."""
-    from basis_numba import gen_laguerre, assoc_legendre, spher_const, mu_const, basis_eval_full
+    from basis_numba import gen_laguerre, assoc_legendre
     from scipy.special import eval_genlaguerre, lpmv
-    import math
 
     print("=== Basis tests (numba vs scipy) ===")
     rng = np.random.default_rng(42)
@@ -66,22 +63,17 @@ def run_basis_tests(n_random=10):
         for _ in range(n_random):
             r = rng.uniform(0.1, 5.0)
             x = rng.uniform(-1.0, 1.0)
-            lag_ref = eval_genlaguerre(k, 2*l+2, r)
-            lag_nb  = gen_laguerre(k, 2*l+2, r)
-            leg_ref = lpmv(abs(m), l, x)
-            leg_nb  = assoc_legendre(l, m, x)
-            assert np.isclose(lag_nb, lag_ref, rtol=1e-10), f"Laguerre mismatch k={k} l={l} r={r}"
-            assert np.isclose(leg_nb, leg_ref, rtol=1e-10), f"Legendre mismatch l={l} m={m} x={x}"
+            assert np.isclose(gen_laguerre(k, 2*l+2, r), eval_genlaguerre(k, 2*l+2, r), rtol=1e-10), \
+                f"Laguerre mismatch k={k} l={l} r={r}"
+            assert np.isclose(assoc_legendre(l, m, x), lpmv(abs(m), l, x), rtol=1e-10), \
+                f"Legendre mismatch l={l} m={m} x={x}"
     print("All basis checks passed.")
 
 
 # ── 3. Conservation tests ────────────────────────────────────────────────────
 
 def run_conservation_tests(n_laguerre=7, lebedev_orders=None):
-    """
-    Sweep n_lebedev and print conservation-violating entries.
-    These should go to zero as n_lebedev increases.
-    """
+    """Sweep n_lebedev — conservation entries should go to zero as n_lebedev increases."""
     from quadrature import collision_quadrature
     from integrand_numba import operator_numba
     from basis_numba import spher_const, mu_const
@@ -148,24 +140,20 @@ def run_convergence_test(select=None, configs=None):
 
 def compare_tensors(path_a, path_b, tol=1e-6):
     """Diff two saved collision tensor pkl files entry by entry."""
-    import pickle
+    from sparse import load_operator
 
-    def load(path):
-        with open(path, 'rb') as f:
-            return pickle.load(f)
+    def to_dict(results):
+        return {(tuple(e[0][0]), tuple(e[0][1]), tuple(e[0][2])): e[1] for e in results}
 
-    def to_dict(data):
-        return {(tuple(e[0][0]), tuple(e[0][1]), tuple(e[0][2])): e[1] for e in data}
-
-    a, b = to_dict(load(path_a)), to_dict(load(path_b))
-    common   = set(a) & set(b)
-    only_a   = set(a) - set(b)
-    only_b   = set(b) - set(a)
+    results_a, n_a, lag_a, leb_a = load_operator(path_a)
+    results_b, n_b, lag_b, leb_b = load_operator(path_b)
+    a, b   = to_dict(results_a), to_dict(results_b)
+    common = set(a) & set(b)
 
     print(f"=== Compare tensors ===")
-    print(f"  {path_a}: {len(a)} entries")
-    print(f"  {path_b}: {len(b)} entries")
-    print(f"  common={len(common)}  only_a={len(only_a)}  only_b={len(only_b)}")
+    print(f"  {path_a}: n={n_a} lag={lag_a} leb={leb_a}  ({len(a)} entries)")
+    print(f"  {path_b}: n={n_b} lag={lag_b} leb={leb_b}  ({len(b)} entries)")
+    print(f"  common={len(common)}  only_a={len(set(a)-set(b))}  only_b={len(set(b)-set(a))}")
 
     mismatches = [(k, a[k], b[k]) for k in common if not np.isclose(a[k], b[k], rtol=tol)]
     if mismatches:
@@ -179,8 +167,11 @@ def compare_tensors(path_a, path_b, tol=1e-6):
 # ── main ─────────────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
-    run_quadrature_tests()
+    n_laguerre, n_lebedev = 7, 7
+    run_quadrature_tests(n_laguerre, n_lebedev)
     print()
-    run_conservation_tests()
+    run_basis_tests()
+    print()
+    run_conservation_tests(n_laguerre)
     print()
     run_convergence_test()

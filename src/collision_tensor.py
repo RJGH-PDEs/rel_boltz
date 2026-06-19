@@ -4,7 +4,7 @@ import pickle
 import time
 
 from boltzmann import operator_parallel_numba as operator_parallel, init_worker
-from sparse_rules import andrea, cai
+from sparse import andrea, cai
 from quadrature import quad_name
 
 

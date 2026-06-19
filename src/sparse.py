@@ -4,6 +4,18 @@ import numpy as np
 from scipy.sparse import csr_matrix
 
 
+# ── Sparsity rules ───────────────────────────────────────────────────────────
+
+def cai(select):
+    m, m1, m2 = select[0][2], select[1][2], select[2][2]
+    return (abs(m) == abs(m1 + m2)) or (abs(m) == abs(m1 - m2))
+
+def andrea(select):
+    l, l1, l2 = select[0][1], select[1][1], select[2][1]
+    rule = l1 + l2 - l
+    return (0 <= rule <= 2*min(l1, l2)) and (rule % 2 == 0)
+
+
 # ── Index maps ───────────────────────────────────────────────────────────────
 
 def lm_index(l, m):
