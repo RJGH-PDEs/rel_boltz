@@ -1,7 +1,7 @@
 import sys
 sys.path.insert(0, '../src')
 
-from basis import f_tilde
+from basis_numba import mu_const, spher_const, basis_eval
 from sparse import ind
 
 
@@ -10,7 +10,8 @@ def linear_comb(coefficients, r, t, p, n):
     for k in range(n):
         for l in range(n):
             for m in range(-l, l+1):
-                ft  = f_tilde(k, l, m)
+                mu = mu_const(k, l)
+                c  = spher_const(l, m)
                 idx = ind(k, l, m, n)
-                result += coefficients[idx] * ft(r, t, p)
+                result += coefficients[idx] * mu * basis_eval(k, l, m, c, r, t, p)
     return result

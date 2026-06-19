@@ -3,211 +3,87 @@ import pickle
 import numpy as np
 from scipy.sparse import csr_matrix
 
-# l and m map
-def lm_index(ll, m): 
-    return ll*ll + (m + ll)
 
-# k, l, m map
-def ind(k, ll, m, n):
-    '''
-    here, we use the convenction that 
-    l is between 0 and L
-    '''
-    return (n*n)*k + lm_index(ll, m)
+# ── Index maps ───────────────────────────────────────────────────────────────
 
-def test_indices():
-    n = 2
-    invariants = [[0,0,0], [0,1,-1], [0,1,0], [0,1,1], [1,0,0]]
-    for klm in invariants:
-        k, l, m = klm
-        print(f"[{k},{l},{m}] -> {ind(k, l, m, n)}")
+def lm_index(l, m):
+    return l*l + (m + l)
 
-# loads and returns data + metadata
-def load_operator(name):
-    with open(name, 'rb') as file:
-        data = pickle.load(file)
-    return data['results'], data['n'], data['n_laguerre'], data['n_lebedev']
-
-# save operator 
-def save_sparse_op(name, operator):
-    os.makedirs(os.path.dirname(name), exist_ok=True)
-    with open(name, 'wb') as file:
-        pickle.dump(operator, file)
-
-    print("saved the sparse operator as ", name)
-
-# extracts non-zero entries
-def non_zeros(operator, tol):
-    '''
-    At this point, operator is a list (1-dim) containing
-    objects of the form [select, value], we extract the 
-    non-zeros based on a tolerance.
-    '''
-    # will store the non-zeros
-    nz = []
-    
-    # extract non zeros
-    for data in operator:
-
-        # append the non-zero
-        if np.abs(data[1]) > tol:
-            nz.append(data)    
-
-    # print the number of non-zeros
-    print('Number of non-zeros: ', len(nz))
-    return nz
-
-# checks sparsity patterns
-def analyse(nz):
-    # counts how many times the rule is broken
-    counter = 0
-
-    # iterate over all non-zeros
-    for e in nz:
-        # extract coefficients
-        select  = e[0]
-        t       = select[0] # test 
-        f1      = select[1] # function 1, f(p)
-        f2      = select[2] # function 2, dg(q)
-
-        ######## directional (CAI)
-        m_test  = t[2] 
-        m_1     = f1[2]
-        m_2     = f2[2]
-
-        test    = np.abs(m_test)
-        sum     = np.abs(m_1 + m_2)
-        diff    = np.abs(m_1 - m_2)
-        
-        Caiflag = (test - sum == 0) or (test - diff == 0)
-
-        if not Caiflag:
-            counter = counter + 1
-
-        ####### anisotropic (Andrea)
-        ltest  = t[1]
-        l1     = f1[1]
-        l2     = f2[1]
-        rule = l1 + l2 - ltest
-        m = min(l1, l2)
-
-        Andrea_flag = (rule <= 2*m) and (0 <= rule) and (rule % 2 == 0)
-        print(e, "Cai ",  Caiflag, "Andrea: " , Andrea_flag)
-
-        if not Andrea_flag:
-            counter = counter + 1
-
-    print('number of times the sparsity rule failed: ', counter)
-    
-# now just one list with simplified indeces
-def simple_index(nz, n):
-    sim_ind = []
-
-    # iterate over the non-zeros
-    for data in nz:
-        # extract indices
-        select  = data[0]
-        t       = select[0] # test 
-        f       = select[1] # function 1, f(p)
-        g       = select[2] # function 2, dg(q)
-        # extract value
-        val     = data[1]
-
-        # compute simple indices
-        t_ind = ind(t[0], t[1], t[2], n)
-        f_ind = ind(f[0], f[1], f[2], n)
-        g_ind = ind(g[0], g[1], g[2], n)
-
-        # append 
-        result = [t_ind, f_ind, g_ind, val]
-
-        sim_ind.append(result) 
-    
-    print("finished computing the list with a simple index.")
-    return sim_ind
-
-# produces the dense operator as a list of matrices
-def dense_op(si, n):
-    '''
-    dense is a list of matrices, the convention is
-    that every matrix will be associated with a 
-    specific test function, then, the fist coordinate
-    associated with f(p), and the second one to dg(q) 
-
-    '''
-    # initialize 
-    size = n**3
-    shape = (size, size)
-    dense = []
-    for i in range(0, n**3):
-        dense.append(np.zeros(shape))
-
-    # fill
-    for element in si:
-        # extract values, should be 
-        # in accordance with convention in 
-        # simple_index, just
-        t   = element[0] # test
-        f   = element[1] # f
-        g   = element[2] # g
-        val = element[3] # value
-        
-        # insert
-        (dense[t])[f][g] = val # notice the index convention
-    
-    print("finished computing the dense tensor (list of dense matrices).")
-    return dense
+def ind(k, l, m, n):
+    return (n*n)*k + lm_index(l, m)
 
 
-# produces the sparse operator, as a list of sparse matrices
-def sparse_op(do):
-    sparse = []
-    
-    for dense_matrix in do:
-        # print("check for symmetry: ", np.max(np.abs(dense_matrix - dense_matrix.T)))
-        sparse.append(csr_matrix(dense_matrix))
-    
-    print("finished computing the sparse tensor (list of sparse matrices).")
-    return sparse
+# ── I/O ──────────────────────────────────────────────────────────────────────
 
-# Print all entries of the collision tensor for manual inspection
-def print_tensor(file_name='results/collision_tensor.pkl'):
-    op = load_operator(file_name)
-    print(f"total entries: {len(op)}")
-    print()
-    for entry in op:
-        select, value = entry
-        print(f"select: {select}  value: {value}")
-
-
-# Full pipeline: extract non-zeros, analyse sparsity, build and save sparse operator
 def sparse_name(n, n_laguerre, n_lebedev):
     return f'sparse_operators/sparse_n{n}_lag{n_laguerre}_leb{n_lebedev}.pkl'
 
+def load_operator(path):
+    with open(path, 'rb') as f:
+        data = pickle.load(f)
+    return data['results'], data['n'], data['n_laguerre'], data['n_lebedev']
+
+def save_sparse_op(path, operator):
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, 'wb') as f:
+        pickle.dump(operator, f)
+    print(f"saved sparse operator to {path}")
+
+
+# ── Pipeline steps ───────────────────────────────────────────────────────────
+
+def non_zeros(operator, tol):
+    nz = [entry for entry in operator if np.abs(entry[1]) > tol]
+    print(f"non-zeros: {len(nz)}")
+    return nz
+
+def check_sparsity(nz):
+    failures = 0
+    for entry in nz:
+        t, f1, f2 = entry[0]
+        val = entry[1]
+
+        m_t, m_1, m_2 = t[2], f1[2], f2[2]
+        cai = (abs(m_t) == abs(m_1 + m_2)) or (abs(m_t) == abs(m_1 - m_2))
+
+        l_t, l_1, l_2 = t[1], f1[1], f2[1]
+        rule = l_1 + l_2 - l_t
+        andrea = (0 <= rule <= 2*min(l_1, l_2)) and (rule % 2 == 0)
+
+        if not (cai and andrea):
+            failures += 1
+
+        print(f"  {[t, f1, f2]}  val={val:.6e}  Cai={cai}  Andrea={andrea}")
+
+    print(f"sparsity rule failures: {failures}")
+
+def simple_index(nz, n):
+    return [[ind(*t, n), ind(*f, n), ind(*g, n), val]
+            for (t, f, g), val in nz]
+
+def build_sparse(si, n):
+    size  = n**3
+    dense = [np.zeros((size, size)) for _ in range(size)]
+    for t, f, g, val in si:
+        dense[t][f][g] = val
+    sparse = [csr_matrix(m) for m in dense]
+    print(f"sparse matrices: {len(sparse)}  nnz per matrix: {[m.nnz for m in sparse]}")
+    return sparse
+
+
+# ── Full pipeline ─────────────────────────────────────────────────────────────
+
 def analyze(tensor_path, tol=1e-1):
-    from collision_tensor import tensor_name
-
-    print("analyzing file: ", tensor_path)
     op, n, n_laguerre, n_lebedev = load_operator(tensor_path)
-    out_name = sparse_name(n, n_laguerre, n_lebedev)
 
-    nz = non_zeros(op, tol)         # extract non zeros
-    analyse(nz)                     # analyse sparsity
+    nz = non_zeros(op, tol)
+    check_sparsity(nz)
+    si = simple_index(nz, n)
+    so = build_sparse(si, n)
 
-    si = simple_index(nz, n)        # with simple index
-    do = dense_op(si, n)            # dense operator
-    so = sparse_op(do)              # sparse operator
-
-    print('sparse operator length: ', len(so))
-    print('number of non-zeros per matrix: ')
-    for slice in so:
-        print(slice.nnz)
-
-    save_sparse_op(out_name, so)
+    save_sparse_op(sparse_name(n, n_laguerre, n_lebedev), so)
 
 
 if __name__ == "__main__":
     from collision_tensor import tensor_name
-    # choose file to analyze
-    n, n_laguerre, n_lebedev = 2, 7, 7 
-    analyze(tensor_name(n, n_laguerre, n_lebedev, use_sparsity=False))
+    analyze(tensor_name(2, 7, 7, use_sparsity=False))
