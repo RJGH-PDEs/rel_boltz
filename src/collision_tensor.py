@@ -3,7 +3,8 @@ import os
 import pickle
 import time
 
-from boltzmann import operator_parallel_numba as operator_parallel, init_worker
+from boltzmann import operator_parallel_numba as operator_parallel, init_worker, \
+                     create_shared_quad, free_shared_quad, _shm_name, _shm_shape, _shm_dtype
 from sparse import andrea, cai
 from quadrature import quad_name
 
@@ -47,8 +48,8 @@ def tensor_name(n, n_laguerre, n_lebedev, use_sparsity):
     return f'./results/tensor_n{n}_lag{n_laguerre}_leb{n_lebedev}_{sp}.pkl'
 
 def compute_tensor(n, quad_path, use_sparsity=True):
-    from quadrature import load_quad
-    _, n_laguerre, n_lebedev = load_quad(quad_path)
+    import boltzmann
+    n_laguerre, n_lebedev = create_shared_quad(quad_path)
     out_path = tensor_name(n, n_laguerre, n_lebedev, use_sparsity)
     params = create_param_iterable(n, use_sparsity)
     total  = len(params)
@@ -56,13 +57,18 @@ def compute_tensor(n, quad_path, use_sparsity=True):
     print(f"workers: {multiprocessing.cpu_count()}")
 
     start = time.time()
-    with multiprocessing.Pool(processes=multiprocessing.cpu_count(),
-                              initializer=init_worker,
-                              initargs=(quad_path,)) as pool:
-        results = []
-        for i, result in enumerate(pool.imap_unordered(operator_parallel, params)):
-            results.append(result)
-            print(f"  {i+1}/{total}  elapsed: {time.time()-start:.1f}s", flush=True)
+    try:
+        with multiprocessing.Pool(processes=multiprocessing.cpu_count(),
+                                  initializer=init_worker,
+                                  initargs=(boltzmann._shm_name,
+                                            boltzmann._shm_shape,
+                                            boltzmann._shm_dtype)) as pool:
+            results = []
+            for i, result in enumerate(pool.imap_unordered(operator_parallel, params)):
+                results.append(result)
+                print(f"  {i+1}/{total}  elapsed: {time.time()-start:.1f}s", flush=True)
+    finally:
+        free_shared_quad()
 
     elapsed = time.time() - start
     print(f"elapsed: {elapsed:.2f}s")
