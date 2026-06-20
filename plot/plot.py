@@ -36,7 +36,7 @@ def eval_radial(coeff_vec):
     return f
 
 # ── load snapshots ────────────────────────────────────────────────────────────
-snapshots = [0, 1, 2, 3, 5, 8, 12, 17, 20, 10000]   # iteration numbers
+snapshots = [0, 1, 2, 3, 4, 5, 6, 7, 8, 10]   # iteration numbers
 
 fig, ax = plt.subplots(figsize=(9, 5))
 
