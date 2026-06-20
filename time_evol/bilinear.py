@@ -1,5 +1,15 @@
+import sys
 import numpy as np
 import pickle
+sys.path.insert(0, '../src')
+
+from sparse import sparse_name
+
+
+def load_sparse(n, n_laguerre, n_lebedev):
+    path = '../src/' + sparse_name(n, n_laguerre, n_lebedev)
+    with open(path, 'rb') as f:
+        return pickle.load(f)
 
 
 # The bilinear Boltzmann collision operator Q(f, f).
@@ -11,26 +21,15 @@ def boltzmann(tensor, f, result):
         result[i] = f @ mat.dot(f)
 
 
-# Copy vector b into a
-def update(a, b):
-    for i, val in enumerate(b):
-        a[i] = val
-
-
 def fmt(result, tol=1e-3):
     return np.where(np.abs(result) < tol, 0.0, result)
 
 
-def test(n=3):
-    size = n**3  # number of basis functions
-
-    # load sparse collision tensor
-    with open('../src/sparse_operators/collision_tensor.pkl', 'rb') as file:
-        so = pickle.load(file)
-
+def test(n=3, n_laguerre=7, n_lebedev=9):
+    so     = load_sparse(n, n_laguerre, n_lebedev)
+    size   = n**3
     result = np.zeros(size)
 
-    # evaluate Q(f, f) for random coefficient vectors in [-1, 1]
     for trial in range(5):
         f = np.random.uniform(-1, 1, size)
         boltzmann(so, f, result)
@@ -39,26 +38,24 @@ def test(n=3):
         print()
 
 
-def test_specific(n=3):
-    size = n**3
-
-    with open('../src/sparse_operators/collision_tensor.pkl', 'rb') as file:
-        so = pickle.load(file)
-
+def test_specific(n=3, n_laguerre=7, n_lebedev=9):
+    so     = load_sparse(n, n_laguerre, n_lebedev)
+    size   = n**3
     result = np.zeros(size)
 
-    # Juttner equilibrium: f[0]=1, rest zero
-    f = np.zeros(size)
+    f    = np.zeros(size)
     f[0] = 1.0
     boltzmann(so, f, result)
     print("--- Juttner equilibrium (f[0]=1, rest 0) ---")
     print(f"Q(f,f): {fmt(result)}")
     print()
 
+
 def main():
-    test()
+    n, n_laguerre, n_lebedev = 3, 7, 9
+    test(n, n_laguerre, n_lebedev)
     print()
-    test_specific()
+    test_specific(n, n_laguerre, n_lebedev)
 
 
 if __name__ == "__main__":

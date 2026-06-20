@@ -1,41 +1,45 @@
+import sys
 import numpy as np
 import pickle
-from bilinear import boltzmann, update
+sys.path.insert(0, '../src')
+from bilinear import boltzmann
+from mass_matrix import mass_name, load_mass
+from sparse import sparse_name
 
-# TODO: the handling of t=0 singularity needs to be made more rigorous,
-# in consultation with Shu. For now we start at a small t_0 > 0 and
-# use a fixed timestep. The prefactor t^{-3/2} is applied explicitly.
+# ── parameters ────────────────────────────────────────────────────────────────
+n          = 3
+n_laguerre = 7
+n_lebedev  = 9
 
-# Parameters
-n              = 2          # truncation (must match collision tensor and mass matrix)
-alpha          = 1.0        # alpha = 2*q, q = 1/2
-t0             = 0.01       # starting time (small but nonzero to avoid singularity)
-dt             = 1e-5       # timestep (small due to t^{-3/2} prefactor near t=0)
-NUM_ITERATIONS = 10000      # number of timesteps
-save_every     = 100        # save coefficients every this many steps
+t0             = 0.01
+dt             = 1e-6
+NUM_ITERATIONS = 10000
+save_every     = 100
 save           = True
 
 size = n**3
 
-# Load mass matrix inverse and sparse collision tensor
-with open('../src/mass/mass.pkl', 'rb') as f:
-    M = pickle.load(f)
-    Mi = np.linalg.inv(M)
+# ── load ──────────────────────────────────────────────────────────────────────
+M  = load_mass('../src/' + mass_name(n, n_laguerre))
+Mi = np.linalg.inv(M)
 
-with open('../src/sparse_operators/collision_tensor.pkl', 'rb') as f:
+with open('../src/' + sparse_name(n, n_laguerre, n_lebedev), 'rb') as f:
     so = pickle.load(f)
 
-# Save coefficient vector at iteration i
+# ── initial condition ─────────────────────────────────────────────────────────
+f    = np.zeros(size)
+f[0] = 2.0   # ind(0,0,0,3)
+f[9] = -0.8  # ind(1,0,0,3)
+
+# ── helpers ───────────────────────────────────────────────────────────────────
 def save_coeff(i, coeff):
     name = f"../plot/coeff/{i}.pkl"
-    with open(name, 'wb') as f:
-        pickle.dump(coeff, f)
+    with open(name, 'wb') as file:
+        pickle.dump(coeff, file)
 
-# Initial condition: near-equilibrium perturbation
-# f[0] = 1 is the equilibrium (Juttner), small perturbation in f[1]
-f      = np.zeros(size)
-f[0]   = 1.0
-f[1]   = 0.1
+# ── time evolution ────────────────────────────────────────────────────────────
+# df/dt = (1/2) t^{-3/2} M^{-1} Q(f, f)
+# forward Euler: f^{n+1} = f^n + dt * (1/2) * t^{-3/2} * M^{-1} Q(f^n, f^n)
 
 if save:
     save_coeff(0, f)
@@ -43,22 +47,21 @@ if save:
 result = np.zeros(size)
 t      = t0
 
-# Time evolution: forward Euler with explicit t^{-3/2} prefactor
-# G^{n+1} = G^n + dt * t^{-3/2} * M^{-1} Q(G^n, G^n)
 for i in range(1, NUM_ITERATIONS + 1):
-    prefactor = t**(-3 * alpha / 2)
+    prefactor = 0.5 * t**(-1.5)
 
     boltzmann(so, f, result)
     f = f + dt * prefactor * (Mi @ result)
 
     t += dt
 
-    if save and i % save_every == 0:
-        save_coeff(i, f)
+    if i <= 20 or (save and i % save_every == 0):
         print(f"iter {i:6d}  t={t:.6f}  |f|={np.linalg.norm(f):.6f}")
+    if save and (i <= 20 or i % save_every == 0):
+        save_coeff(i, f)
 
 print("\nfinal f:")
 print(f)
 boltzmann(so, f, result)
-print("Q(f, f):")
+print("Q(f,f):")
 print(result)

@@ -1,118 +1,70 @@
 import os
+import sys
 import matplotlib.pyplot as plt
 import numpy as np
 import pickle
+sys.path.insert(0, '../src')
+from sparse import ind
 from lc import linear_comb
 
 os.makedirs("figures", exist_ok=True)
 os.makedirs("coeff", exist_ok=True)
 
-'''
-flags
-'''
-# truncation parameter (must match the tensor used)
-N = 2
-# time
-time = 1000
-# flag to save the figure
+# ── flags ────────────────────────────────────────────────────────────────────
+N    = 3
+show = True
 save = True
-# either to use hard-coded coefficients, or open file
-hard_coded_coeff = True
-# show the plot, or just save it
-show = False
+# ─────────────────────────────────────────────────────────────────────────────
 
-'''
-end of flags
-'''
-# generate cartesian points
-n = 40
-x = np.linspace(-5, 5, n)
-y = np.zeros(n)
-z = np.zeros(n)
+i0 = ind(0, 0, 0, N)   # = 0
+i1 = ind(1, 0, 0, N)   # = 9
+i2 = ind(2, 0, 0, N)   # = 18
 
-# generate spherical cordinates
-def theta(x, y, z):
-    r = np.sqrt(x**2 + y**2 + z**2)
+# ── evaluation grid ───────────────────────────────────────────────────────────
+n_pts  = 200
+x_vals = np.linspace(-10.0, 10.0, n_pts)
+r_vals = np.abs(x_vals)
 
-    if r == 0:
-        return 0
-    else:
-        return np.arccos(z/ r)
-    
-def phi(x, y):
-    r = np.sqrt(x**2 + y**2)
+def eval_radial(coeff_vec):
+    f = np.zeros(len(x_vals))
+    for i, (x, r) in enumerate(zip(x_vals, r_vals)):
+        if r == 0.0:
+            f[i] = linear_comb(coeff_vec, 0.0, 0.0, 0.0, N)
+        else:
+            theta = 0.0 if x > 0 else np.pi
+            f[i] = np.exp(-r / 2) * linear_comb(coeff_vec, r, theta, 0.0, N)
+    return f
 
-    if r == 0:
-        return 0
-    elif y == 0:
-        return np.arccos(x/r) # new discovery, this might be wrong
-    else:
-        return np.sign(y)*np.arccos(x/r)
-    
-def radius(x, y, z):
-    return np.sqrt(x**2 + y**2 + z**2)
+# ── load snapshots ────────────────────────────────────────────────────────────
+snapshots = [0, 1, 2, 3, 5, 8, 12, 17, 20, 10000]   # iteration numbers
 
-# spherical points
-r = np.zeros(n)
-t = np.zeros(n)
-p = np.zeros(n)
+fig, ax = plt.subplots(figsize=(9, 5))
 
-# counter
-i = 0
-for point in x:
-    # compute the points
-    r[i] = radius(x[i], y[i], z[i])
-    t[i] = theta(x[i], y[i], z[i])
-    p[i] = phi(x[i], y[i])
-    # advance the counter
-    i = i + 1
+cmap = plt.cm.viridis
+colors = cmap(np.linspace(0, 1, len(snapshots)))
 
-# print the points
-'''
-print(r)
-print(t)
-print(p)
-'''
+for color, it in zip(colors, snapshots):
+    path = f"coeff/{it}.pkl"
+    if not os.path.exists(path):
+        print(f"missing {path}, skipping")
+        continue
+    with open(path, 'rb') as f:
+        coeff = pickle.load(f)
+    label = f'iter {it}' + (' (IC)' if it == 0 else '') + (' (final)' if it == 10000 else '')
+    ax.plot(x_vals, eval_radial(coeff), color=color, label=label)
 
-# will store the function
-f = np.zeros(n)
+ax.set_title('time evolution: hot IC → equilibrium')
+ax.set_xlabel('p_x')
+ax.set_ylabel('f')
+ax.axhline(0, color='k', linewidth=0.5, linestyle='--')
+ax.legend(fontsize=8)
+ax.grid(True)
 
-if hard_coded_coeff:
-    # coefficients: equilibrium [0,0,0]  radial perturbation [1,0,0]
-    coeff = np.zeros(N**3)
-    coeff[0] =   2   # [0,0,0]: equilibrium
-    coeff[4] =  -1   # [1,0,0]: radial perturbation
-    plt_name = "equilibrium + radial perturbation"
-else: 
-    file_name = "coeff/" + str(time) + ".pkl"
-    with open(file_name, 'rb') as file:
-        coeff = pickle.load(file)
-    plt_name = 'Solution at after ' + str(time) + ' iterations' 
+plt.tight_layout()
 
-for i in range(n):
-    func_val = linear_comb(coeff, r[i], t[i], p[i], N)
-    f[i] = np.exp(-r[i] / 2) * func_val
+if save:
+    plt.savefig('./figures/evolution.png', dpi=150)
+    print("saved ./figures/evolution.png")
 
-# Create the plot
-plt.plot(x, f, marker='o')  # marker='o' will put points at each (x, y)
-plt.title(plt_name)
-plt.xlabel('x')
-plt.ylabel('y')
-plt.grid(True)
-   
-# show it
 if show:
     plt.show()
-
-# save it
-if save:
-    # Save the figure
-    if hard_coded_coeff:
-        figure_name = "./figures/hardcoded.png"
-    else:
-        figure_name = "./figures/" + str(time) + ".png"
-    
-    plt.savefig(figure_name)
-    print("plot ", figure_name, " has been saved.")
-    
-

@@ -84,5 +84,8 @@ def compute_tensor(n, quad_path, use_sparsity=True):
 
 
 if __name__ == "__main__":
-    quad_path = quad_name('collision', 7, 7)
-    compute_tensor(n=2, quad_path=quad_path, use_sparsity=False)
+    n            = 2
+    n_laguerre   = 7
+    n_lebedev    = 7
+    use_sparsity = False
+    compute_tensor(n, quad_path=quad_name('collision', n_laguerre, n_lebedev), use_sparsity=use_sparsity)

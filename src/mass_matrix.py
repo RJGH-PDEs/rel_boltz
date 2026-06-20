@@ -4,7 +4,6 @@ import numpy as np
 from scipy.special import roots_genlaguerre, eval_genlaguerre
 
 from basis_numba import mu_const
-from quadrature import load_quad, quad_name
 from sparse import ind
 
 
@@ -38,8 +37,8 @@ def mass_matrix_1d(n, n_laguerre=15):
     return M
 
 
-def mass_name(n, n_laguerre, n_lebedev):
-    return f'./mass/mass_n{n}_lag{n_laguerre}_leb{n_lebedev}.pkl'
+def mass_name(n, n_laguerre):
+    return f'./mass/mass_n{n}_lag{n_laguerre}.pkl'
 
 def save_mass(M, path):
     os.makedirs(os.path.dirname(path), exist_ok=True)
@@ -52,14 +51,14 @@ def load_mass(path):
         return pickle.load(f)
 
 
-def generate(n, quad_path):
-    _, n_laguerre, n_lebedev = load_quad(quad_path)
-    print(f"computing mass matrix (n={n})...")
-    M = mass_matrix_1d(n)
-    save_mass(M, mass_name(n, n_laguerre, n_lebedev))
+def generate(n, n_laguerre):
+    print(f"computing mass matrix (n={n}, n_laguerre={n_laguerre})...")
+    M = mass_matrix_1d(n, n_laguerre)
+    save_mass(M, mass_name(n, n_laguerre))
     return M
 
 
 if __name__ == "__main__":
-    quad_path = quad_name('mass', 7, 7)
-    generate(n=2, quad_path=quad_path)
+    n          = 3
+    n_laguerre = 7
+    generate(n=n, n_laguerre=n_laguerre)
