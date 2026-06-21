@@ -1,6 +1,6 @@
 import numpy as np
 from numba import njit
-from basis_numba import gen_laguerre, assoc_legendre
+from basis_numba import basis_eval, f_tilde_eval
 
 # --- postcoll functions (njit) ---
 
@@ -58,20 +58,6 @@ def postcoll_G(rp, tp, pp, rq, tq, pq, tw, pw):
     gy = (sy/2) * (1 - dot/D) - (s/2) * wy
     gz = (sz/2) * (1 - dot/D) - (s/2) * wz
     return cart_to_sph(gx, gy, gz)
-
-# --- basis evaluation (njit) ---
-
-@njit
-def basis_eval(k, l, m, c, r, t, p):
-    alpha = 2*l + 2
-    lag   = gen_laguerre(k, alpha, r)
-    leg   = assoc_legendre(l, m, np.cos(t))
-    ang   = np.cos(m * p) if m >= 0 else np.sin(-m * p)
-    return c * leg * ang * lag * r**l
-
-@njit
-def f_tilde_eval(k, l, m, mu, c, r, t, p):
-    return mu * basis_eval(k, l, m, c, r, t, p)
 
 # --- full quadrature loop (njit) ---
 # quad must be a 2D numpy array of shape (N, 9): [rp,tp,pp,rq,tq,pq,tw,pw,w]

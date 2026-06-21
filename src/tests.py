@@ -65,7 +65,8 @@ def run_basis_tests(n_random=10):
             x = rng.uniform(-1.0, 1.0)
             assert np.isclose(gen_laguerre(k, 2*l+2, r), eval_genlaguerre(k, 2*l+2, r), rtol=1e-10), \
                 f"Laguerre mismatch k={k} l={l} r={r}"
-            assert np.isclose(assoc_legendre(l, m, x), lpmv(abs(m), l, x), rtol=1e-10), \
+            s = np.sqrt(1.0 - x*x)
+            assert np.isclose(assoc_legendre(l, m, x, s), lpmv(abs(m), l, x), rtol=1e-10), \
                 f"Legendre mismatch l={l} m={m} x={x}"
     print("All basis checks passed.")
 

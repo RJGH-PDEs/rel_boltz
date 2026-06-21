@@ -26,14 +26,24 @@ def gen_laguerre(k, alpha, x):
 # P_{m}^{m}(x)   = (-1)^m (2m-1)!! (1-x^2)^{m/2}
 # P_{m+1}^{m}(x) = x (2m+1) P_m^m(x)
 # P_{l+1}^{m}(x) = ((2l+1) x P_l^m - (l+m) P_{l-1}^m) / (l - m + 1)
+#
+# BUG (found and fixed): s = sin(theta) must be passed in directly rather
+# than derived from x = cos(theta) via sqrt(1 - x^2). Near a pole
+# (theta -> 0 or pi), cos(theta) rounds to exactly +-1.0 in float64 once
+# theta < ~1.5e-8, which collapses 1 - x^2 to exactly 0 by catastrophic
+# cancellation, even though sin(theta) itself is still accurately
+# representable. The old code computed s internally from x and silently
+# returned 0.0 for any (l,m) with m!=0 evaluated that close to a pole.
+# Verified against mpmath (50-digit precision) to be correct after the fix,
+# and verified that no quadrature node in our actual collision/mass
+# quadratures (n_lebedev=7,9) fell in the affected band, so prior tensors
+# computed with the old code are unaffected.
 @njit
-def assoc_legendre(l, m, x):
+def assoc_legendre(l, m, x, s):
     am = abs(m)
     # compute P_{am}^{am}
     pmm = 1.0
     if am > 0:
-        factor = 1.0
-        s = sqrt(max(0.0, 1.0 - x*x))
         for i in range(1, am + 1):
             pmm *= -(2*i - 1) * s
     if l == am:
@@ -74,7 +84,7 @@ def basis_eval(k, l, m, c, r, t, p):
     """Evaluate phi_{k,l,m}(r,t,p) = c * L_k^{2l+2}(r) * r^l * P_l^|m|(cos t) * azimuth(m,p)"""
     alpha = 2*l + 2
     lag   = gen_laguerre(k, alpha, r)
-    leg   = assoc_legendre(l, m, cos(t))
+    leg   = assoc_legendre(l, m, cos(t), sin(t))
     ang   = cos(m * p) if m >= 0 else sin(-m * p)
     return c * leg * ang * lag * r**l
 

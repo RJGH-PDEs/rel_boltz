@@ -10,8 +10,9 @@ from sparse import sparse_name
 n          = 3
 n_laguerre = 7
 n_lebedev  = 9
+tag        = ''   # e.g. '_postfix', '_tacc' — to load tensors/quadratures from a tagged run
 
-t0             = 0.01
+t0             = 1.0
 dt             = 1e-3
 NUM_ITERATIONS = 10000
 save_every     = 100
@@ -20,16 +21,18 @@ save           = True
 size = n**3
 
 # ── load ──────────────────────────────────────────────────────────────────────
-M  = load_mass('../src/' + mass_name(n, n_laguerre))
+M  = load_mass('../src/' + mass_name(n, n_laguerre, tag=tag))
 Mi = np.linalg.inv(M)
 
-with open('../src/' + sparse_name(n, n_laguerre, n_lebedev), 'rb') as f:
+with open('../src/' + sparse_name(n, n_laguerre, n_lebedev, tag=tag), 'rb') as f:
     so = pickle.load(f)
 
 # ── initial condition ─────────────────────────────────────────────────────────
+# hot radial IC + small angular (dipole, l=1, m=0) perturbation
 f    = np.zeros(size)
-f[0] = 2.0   # ind(0,0,0,3)
-f[9] = -0.8  # ind(1,0,0,3)
+f[0] = 2.0    # ind(0,0,0,3)
+f[9] = -0.8   # ind(1,0,0,3)
+f[2] = 0.1    # ind(0,1,0,3)  small dipole perturbation
 
 # equilibrium from previous runs
 f_eq    = np.zeros(size)
@@ -62,12 +65,13 @@ for i in range(1, NUM_ITERATIONS + 1):
     t += dt
 
     if i <= 20 or (save and i % save_every == 0):
-        print(f"iter {i:6d}  t={t:.6f}  |f|={np.linalg.norm(f):.6f}  |f-feq|={np.linalg.norm(f - f_eq):.6e}")
+        print(f"iter {i:6d}  t={t:.6f}  |f|={np.linalg.norm(f):.6f}  f[2]={f[2]:.6e}")
     if save and (i <= 20 or i % save_every == 0):
         save_coeff(i, f)
 
 print("\nfinal f:")
 print(f)
+print(f"f[2] (dipole mode): {f[2]:.6e}")
 boltzmann(so, f, result)
 print("Q(f,f):")
 print(result)

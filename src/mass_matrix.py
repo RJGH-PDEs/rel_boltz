@@ -37,8 +37,8 @@ def mass_matrix_1d(n, n_laguerre=15):
     return M
 
 
-def mass_name(n, n_laguerre):
-    return f'./mass/mass_n{n}_lag{n_laguerre}.pkl'
+def mass_name(n, n_laguerre, tag=''):
+    return f'./mass/mass_n{n}_lag{n_laguerre}{tag}.pkl'
 
 def save_mass(M, path):
     os.makedirs(os.path.dirname(path), exist_ok=True)
@@ -51,10 +51,10 @@ def load_mass(path):
         return pickle.load(f)
 
 
-def generate(n, n_laguerre):
+def generate(n, n_laguerre, tag=''):
     print(f"computing mass matrix (n={n}, n_laguerre={n_laguerre})...")
     M = mass_matrix_1d(n, n_laguerre)
-    save_mass(M, mass_name(n, n_laguerre))
+    save_mass(M, mass_name(n, n_laguerre, tag=tag))
     return M
 
 

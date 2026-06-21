@@ -36,7 +36,7 @@ def eval_radial(coeff_vec):
     return f
 
 # ── load snapshots ────────────────────────────────────────────────────────────
-snapshots = [0, 1, 2, 3, 4, 5, 6, 7, 8, 10]   # iteration numbers
+snapshots = [0, 1, 2, 3, 5, 8, 12, 17, 20, 10000]   # iteration numbers
 
 fig, ax = plt.subplots(figsize=(9, 5))
 
@@ -53,7 +53,7 @@ for color, it in zip(colors, snapshots):
     label = f'iter {it}' + (' (IC)' if it == 0 else '') + (' (final)' if it == 10000 else '')
     ax.plot(x_vals, eval_radial(coeff), color=color, label=label)
 
-ax.set_title('time evolution: hot IC → equilibrium')
+ax.set_title('time evolution: hot + dipole IC → boosted equilibrium')
 ax.set_xlabel('p_x')
 ax.set_ylabel('f')
 ax.axhline(0, color='k', linewidth=0.5, linestyle='--')

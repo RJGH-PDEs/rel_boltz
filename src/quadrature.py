@@ -74,8 +74,8 @@ def mass_quadrature(n_laguerre, n_lebedev):
 
     return quad
 
-def quad_name(kind, n_laguerre, n_lebedev):
-    return f'./quadratures/{kind}_lag{n_laguerre}_leb{n_lebedev}.pkl'
+def quad_name(kind, n_laguerre, n_lebedev, tag=''):
+    return f'./quadratures/{kind}_lag{n_laguerre}_leb{n_lebedev}{tag}.pkl'
 
 def main():
     n_laguerre = 7

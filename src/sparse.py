@@ -27,8 +27,8 @@ def ind(k, l, m, n):
 
 # ── I/O ──────────────────────────────────────────────────────────────────────
 
-def sparse_name(n, n_laguerre, n_lebedev):
-    return f'sparse_operators/sparse_n{n}_lag{n_laguerre}_leb{n_lebedev}.pkl'
+def sparse_name(n, n_laguerre, n_lebedev, tag=''):
+    return f'sparse_operators/sparse_n{n}_lag{n_laguerre}_leb{n_lebedev}{tag}.pkl'
 
 def load_operator(path):
     with open(path, 'rb') as f:
@@ -85,7 +85,7 @@ def build_sparse(si, n):
 
 # ── Full pipeline ─────────────────────────────────────────────────────────────
 
-def analyze(tensor_path, tol=1e-1):
+def analyze(tensor_path, tol=1e-1, out_tag=''):
     op, n, n_laguerre, n_lebedev = load_operator(tensor_path)
 
     nz = non_zeros(op, tol)
@@ -93,13 +93,14 @@ def analyze(tensor_path, tol=1e-1):
     si = simple_index(nz, n)
     so = build_sparse(si, n)
 
-    save_sparse_op(sparse_name(n, n_laguerre, n_lebedev), so)
+    save_sparse_op(sparse_name(n, n_laguerre, n_lebedev, tag=out_tag), so)
 
 
 if __name__ == "__main__":
     from collision_tensor import tensor_name
-    n           = 3
-    n_laguerre  = 7
-    n_lebedev   = 9
-    use_sparsity = True
-    analyze(tensor_name(n, n_laguerre, n_lebedev, use_sparsity))
+    n            = 3
+    n_laguerre   = 7
+    n_lebedev    = 9
+    use_sparsity = False
+    tag          = ''
+    analyze(tensor_name(n, n_laguerre, n_lebedev, use_sparsity, tag=tag), out_tag=tag)

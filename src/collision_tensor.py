@@ -43,14 +43,14 @@ def create_param_iterable(n, use_sparsity=True):
 # Compute the full collision tensor Q_{i,jk} in parallel.
 # Each worker loads the quadrature independently to avoid serialization overhead.
 # Results are saved as a list of [select, value].
-def tensor_name(n, n_laguerre, n_lebedev, use_sparsity):
+def tensor_name(n, n_laguerre, n_lebedev, use_sparsity, tag=''):
     sp = 'sparse' if use_sparsity else 'dense'
-    return f'./results/tensor_n{n}_lag{n_laguerre}_leb{n_lebedev}_{sp}.pkl'
+    return f'./results/tensor_n{n}_lag{n_laguerre}_leb{n_lebedev}_{sp}{tag}.pkl'
 
-def compute_tensor(n, quad_path, use_sparsity=True):
+def compute_tensor(n, quad_path, use_sparsity=True, tag=''):
     import boltzmann
     n_laguerre, n_lebedev = create_shared_quad(quad_path)
-    out_path = tensor_name(n, n_laguerre, n_lebedev, use_sparsity)
+    out_path = tensor_name(n, n_laguerre, n_lebedev, use_sparsity, tag=tag)
     params = create_param_iterable(n, use_sparsity)
     total  = len(params)
 
@@ -77,15 +77,15 @@ def compute_tensor(n, quad_path, use_sparsity=True):
     with open(out_path, 'wb') as f:
         pickle.dump({'results': results, 'n': n,
                      'n_laguerre': n_laguerre, 'n_lebedev': n_lebedev,
-                     'use_sparsity': use_sparsity}, f)
+                     'use_sparsity': use_sparsity, 'tag': tag}, f)
     print(f"saved to {out_path}  ({len(results)} entries)")
 
     return results
 
 
 if __name__ == "__main__":
-    n            = 2
+    n            = 3
     n_laguerre   = 7
-    n_lebedev    = 7
-    use_sparsity = False
+    n_lebedev    = 9
+    use_sparsity = True
     compute_tensor(n, quad_path=quad_name('collision', n_laguerre, n_lebedev), use_sparsity=use_sparsity)
