@@ -28,11 +28,10 @@ with open('../src/' + sparse_name(n, n_laguerre, n_lebedev, tag=tag), 'rb') as f
     so = pickle.load(f)
 
 # ── initial condition ─────────────────────────────────────────────────────────
-# hot radial IC + small angular (dipole, l=1, m=0) perturbation
+# hot radial IC
 f    = np.zeros(size)
 f[0] = 2.0    # ind(0,0,0,3)
 f[9] = -0.8   # ind(1,0,0,3)
-f[2] = 0.1    # ind(0,1,0,3)  small dipole perturbation
 
 # equilibrium from previous runs
 f_eq    = np.zeros(size)

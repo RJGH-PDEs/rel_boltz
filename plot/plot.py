@@ -53,7 +53,7 @@ for color, it in zip(colors, snapshots):
     label = f'iter {it}' + (' (IC)' if it == 0 else '') + (' (final)' if it == 10000 else '')
     ax.plot(x_vals, eval_radial(coeff), color=color, label=label)
 
-ax.set_title('time evolution: hot + dipole IC → boosted equilibrium')
+ax.set_title('time evolution of f along p_x')
 ax.set_xlabel('p_x')
 ax.set_ylabel('f')
 ax.axhline(0, color='k', linewidth=0.5, linestyle='--')
