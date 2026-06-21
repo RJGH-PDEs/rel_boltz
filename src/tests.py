@@ -80,12 +80,20 @@ def run_conservation_tests(n_laguerre=7, lebedev_orders=None):
     from basis_numba import spher_const, mu_const
 
     if lebedev_orders is None:
-        lebedev_orders = [7, 9, 11]
+        lebedev_orders = [9, 11, 13]
 
     cases = [
         ("mass   [0,0,0] x [2,2,-2] x [2,2,-2]", [[0,0,0],[2,2,-2],[2,2,-2]]),
         ("mass   [0,0,0] x [2,2, 0] x [2,2, 0]", [[0,0,0],[2,2, 0],[2,2, 0]]),
         ("energy [1,0,0] x [2,2,-2] x [2,2,-2]", [[1,0,0],[2,2,-2],[2,2,-2]]),
+        # l=3 trial functions: the worst case once n=4 is in play (n=3 only
+        # ever has l up to 2). Included whenever this is run for n=4.
+        ("mass   [0,0,0] x [3,3,-3] x [3,3,-3]", [[0,0,0],[3,3,-3],[3,3,-3]]),
+        ("mass   [0,0,0] x [3,3, 0] x [3,3, 0]", [[0,0,0],[3,3, 0],[3,3, 0]]),
+        ("energy [1,0,0] x [3,3,-3] x [3,3,-3]", [[1,0,0],[3,3,-3],[3,3,-3]]),
+        ("mass     [0,0,0] x [3,3, 1] x [3,3, 1]", [[0,0,0],[3,3, 1],[3,3, 1]]),
+        ("energy   [1,0,0] x [3,3, 0] x [3,3, 0]", [[1,0,0],[3,3, 0],[3,3, 0]]),
+        ("momentum [0,1,0] x [3,2,-1] x [2,3,-1]", [[0,1,0],[3,2,-1],[2,3,-1]]),
     ]
 
     def eval_entry(select, quad_np):
@@ -99,12 +107,17 @@ def run_conservation_tests(n_laguerre=7, lebedev_orders=None):
     eval_entry([[0,0,0],[0,0,0],[0,0,0]], _wq)
 
     print("=== Conservation tests ===")
-    for label, sel in cases:
-        print(f"\n  {label}")
-        for n_leb in lebedev_orders:
-            quad = np.array(collision_quadrature(n_laguerre, n_leb))
-            val  = eval_entry(sel, quad)
-            print(f"    n_lebedev={n_leb:2d}  n_pts={len(quad):>10}  val={val:.4e}")
+    # build the quadrature once per n_lebedev order and reuse it across all
+    # cases, instead of rebuilding it (expensive!) once per case
+    for n_leb in lebedev_orders:
+        import time
+        t0 = time.time()
+        quad = np.array(collision_quadrature(n_laguerre, n_leb))
+        build_time = time.time() - t0
+        print(f"\n--- n_lebedev={n_leb}  n_pts={len(quad):>10}  (built in {build_time:.1f}s) ---")
+        for label, sel in cases:
+            val = eval_entry(sel, quad)
+            print(f"  {label}  val={val:.4e}")
 
 
 # ── 4. Quadrature convergence ────────────────────────────────────────────────

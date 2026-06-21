@@ -28,10 +28,15 @@ with open('../src/' + sparse_name(n, n_laguerre, n_lebedev, tag=tag), 'rb') as f
     so = pickle.load(f)
 
 # ── initial condition ─────────────────────────────────────────────────────────
-# hot radial IC
-f    = np.zeros(size)
-f[0] = 2.0    # ind(0,0,0,3)
-f[9] = -0.8   # ind(1,0,0,3)
+# hot radial IC + "heat-flux"-like l=1,m=0 perturbation: a combination of the
+# k=1 and k=2 radial modes at l=1 chosen so the net p_z momentum (Mf)[2] is
+# exactly zero (ratio f[20]/f[11] = 1/sqrt(3)), while still being asymmetric
+# under p_z -> -p_z since the angular shape (l=1,m=0) is unchanged.
+f      = np.zeros(size)
+f[0]   = 2.0                # ind(0,0,0,3)
+f[9]   = -0.8               # ind(1,0,0,3)
+f[11]  = 0.1                # ind(1,1,0,3)
+f[20]  = 0.1 / np.sqrt(3)   # ind(2,1,0,3)
 
 # equilibrium from previous runs
 f_eq    = np.zeros(size)

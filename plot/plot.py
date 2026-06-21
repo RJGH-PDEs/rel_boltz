@@ -7,12 +7,12 @@ sys.path.insert(0, '../src')
 from sparse import ind
 from lc import linear_comb
 
-os.makedirs("figures", exist_ok=True)
+os.makedirs("figures/axis_plots", exist_ok=True)
 os.makedirs("coeff", exist_ok=True)
 
 # ── flags ────────────────────────────────────────────────────────────────────
 N    = 3
-show = True
+show = False   # one figure per axis is saved instead; browse the files
 save = True
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -22,49 +22,67 @@ i2 = ind(2, 0, 0, N)   # = 18
 
 # ── evaluation grid ───────────────────────────────────────────────────────────
 n_pts  = 200
-x_vals = np.linspace(-10.0, 10.0, n_pts)
-r_vals = np.abs(x_vals)
+coord_vals = np.linspace(-10.0, 10.0, n_pts)
+r_vals     = np.abs(coord_vals)
 
-def eval_radial(coeff_vec):
-    f = np.zeros(len(x_vals))
-    for i, (x, r) in enumerate(zip(x_vals, r_vals)):
+# Evaluates f along a single Cartesian axis ('x', 'y', or 'z'). Each axis
+# corresponds to a fixed (theta, phi) for positive/negative values of the
+# coordinate, since on a coordinate axis only the sign and r matter:
+#   +x: theta=pi/2, phi=0      -x: theta=pi/2, phi=pi
+#   +y: theta=pi/2, phi=pi/2   -y: theta=pi/2, phi=-pi/2
+#   +z: theta=0                -z: theta=pi          (phi irrelevant at poles)
+def eval_axis(coeff_vec, axis):
+    f = np.zeros(len(coord_vals))
+    for i, (c, r) in enumerate(zip(coord_vals, r_vals)):
         if r == 0.0:
             f[i] = linear_comb(coeff_vec, 0.0, 0.0, 0.0, N)
+            continue
+        if axis == 'x':
+            theta, phi = np.pi / 2, (0.0 if c > 0 else np.pi)
+        elif axis == 'y':
+            theta, phi = np.pi / 2, (np.pi / 2 if c > 0 else -np.pi / 2)
+        elif axis == 'z':
+            theta, phi = (0.0 if c > 0 else np.pi), 0.0
         else:
-            theta = 0.0 if x > 0 else np.pi
-            f[i] = np.exp(-r / 2) * linear_comb(coeff_vec, r, theta, 0.0, N)
+            raise ValueError(f"unknown axis: {axis}")
+        f[i] = np.exp(-r / 2) * linear_comb(coeff_vec, r, theta, phi, N)
     return f
 
 # ── load snapshots ────────────────────────────────────────────────────────────
 snapshots = [0, 1, 2, 3, 5, 8, 12, 17, 20, 10000]   # iteration numbers
 
-fig, ax = plt.subplots(figsize=(9, 5))
-
-cmap = plt.cm.viridis
-colors = cmap(np.linspace(0, 1, len(snapshots)))
-
-for color, it in zip(colors, snapshots):
+coeffs = []
+for it in snapshots:
     path = f"coeff/{it}.pkl"
     if not os.path.exists(path):
         print(f"missing {path}, skipping")
         continue
-    with open(path, 'rb') as f:
-        coeff = pickle.load(f)
-    label = f'iter {it}' + (' (IC)' if it == 0 else '') + (' (final)' if it == 10000 else '')
-    ax.plot(x_vals, eval_radial(coeff), color=color, label=label)
+    with open(path, 'rb') as file:
+        coeffs.append((it, pickle.load(file)))
 
-ax.set_title('time evolution of f along p_x')
-ax.set_xlabel('p_x')
-ax.set_ylabel('f')
-ax.axhline(0, color='k', linewidth=0.5, linestyle='--')
-ax.legend(fontsize=8)
-ax.grid(True)
+cmap   = plt.cm.viridis
+colors = cmap(np.linspace(0, 1, len(coeffs)))
 
-plt.tight_layout()
+for axis in ['x', 'y', 'z']:
+    fig, ax = plt.subplots(figsize=(9, 5))
 
-if save:
-    plt.savefig('./figures/evolution.png', dpi=150)
-    print("saved ./figures/evolution.png")
+    for color, (it, coeff) in zip(colors, coeffs):
+        label = f'iter {it}' + (' (IC)' if it == 0 else '') + (' (final)' if it == 10000 else '')
+        ax.plot(coord_vals, eval_axis(coeff, axis), color=color, label=label)
 
-if show:
-    plt.show()
+    ax.set_title(f'time evolution of f along the p_{axis} axis')
+    ax.set_xlabel(f'p_{axis}')
+    ax.set_ylabel('f')
+    ax.axhline(0, color='k', linewidth=0.5, linestyle='--')
+    ax.legend(fontsize=8)
+    ax.grid(True)
+    plt.tight_layout()
+
+    if save:
+        figure_name = f'./figures/axis_plots/p_{axis}.png'
+        plt.savefig(figure_name, dpi=150)
+        print(f"saved {figure_name}")
+
+    if show:
+        plt.show()
+    plt.close(fig)
