@@ -95,6 +95,18 @@ truth, also dumped into `run_meta.json`). To run all three, edit `CASE`, then ru
 - **`assoc_legendre` pole bug (fixed):** `sin(θ)` must be passed in explicitly, never derived from
   `cos(θ)` via `sqrt(1 - cos²)` — near a pole that collapses to exactly 0 in float64. See the long
   comment in `src/basis_numba.py`.
+- **Plotting module structure (single output pipeline — keep it DRY).** Each plotting file has one
+  job and nothing is duplicated; don't reintroduce a second copy:
+  - `plot/plot_common.py` — the only home for logic shared by the plot scripts: `eval_point`
+    (the `exp(-r/2)·linear_comb` value with the `r==0` case), the unified `SNAPSHOTS` list,
+    `load_run_meta`, and `experiment_case_dir`. Add anything both scripts need here, not in both.
+  - `plot/plot.py` — 1D line plots along the x/y/z axes (`eval_axis`).
+  - `plot/plot_heatmap.py` — 2D plane slices, both `direct` and `asymmetry` views (`eval_plane`).
+  - `time_evol/export_experiment.py` — README only; it does **not** plot or copy figures.
+  The plot scripts write figures **directly** into `time_evol/experiments/<case>/` (one copy, in its
+  final home) and read `n`/`case` from `run_meta.json` rather than hardcoding them. There is no
+  `plot/figures/` staging dir — adding one back would recreate the duplicate-output problem this
+  layout was built to remove.
 
 ## Verification
 
