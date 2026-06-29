@@ -70,8 +70,8 @@ for axis in ['x', 'y', 'z']:
         label = f'iter {it}' + (' (IC)' if it == 0 else '') + (' (final)' if it == 10000 else '')
         ax.plot(coord_vals, eval_axis(coeff, axis), color=color, label=label)
 
-    ax.set_title(f'time evolution of f along the p_{axis} axis')
-    ax.set_xlabel(f'p_{axis}')
+    ax.set_title(f'time evolution of f along the ξ_{axis} axis')
+    ax.set_xlabel(f'ξ_{axis}')
     ax.set_ylabel('f')
     ax.axhline(0, color='k', linewidth=0.5, linestyle='--')
     ax.legend(fontsize=8)
@@ -79,7 +79,7 @@ for axis in ['x', 'y', 'z']:
     plt.tight_layout()
 
     if save:
-        figure_name = f'./figures/axis_plots/p_{axis}.png'
+        figure_name = f'./figures/axis_plots/xi_{axis}.png'
         plt.savefig(figure_name, dpi=150)
         print(f"saved {figure_name}")
 

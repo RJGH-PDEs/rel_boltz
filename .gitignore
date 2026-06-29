@@ -17,6 +17,10 @@
 
 # time evolution
 /time_evol/__pycache__/
+/time_evol/figures/
+
+# experiment exports (figures + READMEs staged for the LaTeX writeup; regenerable via export_experiment.py)
+/time_evol/experiments/
 
 # plotting
 /plot/coeff/

@@ -51,9 +51,31 @@ The build is a chain of pickled artifacts; each stage consumes the previous stag
 4. **`src/sparse.py`** → thresholds the tensor, verifies the analytic sparsity rules, and writes a
    list of `csr_matrix` operators, one per test function (`sparse_operators/*.pkl`).
 5. **`time_evol/time_ev.py`** → loads `M` and the sparse operator, sets an initial coefficient
-   vector, and forward-Euler integrates. Saves snapshots to `plot/coeff/<iter>.pkl`.
-6. **`plot/plot.py`** (1D along x/y/z axes) and **`plot/plot_heatmap.py`** (2D slices, with an
-   asymmetry mode) read those snapshots.
+   vector, and forward-Euler integrates. Saves snapshots to `plot/coeff/<iter>.pkl` and a
+   `plot/coeff/run_meta.json` describing the run (case, `t0`, `dt`, iterations, nonzero IC entries).
+   The IC is chosen by the `CASE` flag — see "Initial-condition cases" below.
+6. **`plot/plot.py`** (1D along x/y/z axes) and **`plot/plot_heatmap.py`** (2D slices) read those
+   snapshots. `plot_heatmap.py` renders **both** views every run — `figures/heatmap_evolution_direct/`
+   (raw `f`, viridis) and `figures/heatmap_evolution_asymmetry/` (`F(u,v)−F(u,−v)`, coolwarm).
+7. **`time_evol/export_experiment.py`** → packages one run into a self-contained, LaTeX-ready folder
+   `time_evol/experiments/<case>/` (`README.md` from `run_meta.json` + `axis_plots/` +
+   `heatmaps_direct/` + `heatmaps_asymmetry/`). Run from `time_evol/` after the plot scripts. The
+   `experiments/` tree is gitignored — it is export output meant to be copied into the LaTeX writeup.
+
+## Initial-condition cases
+
+`time_ev.py` defines three ICs via the `CASE` flag, all sharing the "hot radial" base
+(`f[0]=2.0`, `f[9]=-0.8`); `CASE_INFO` holds each one's physical significance (the single source of
+truth, also dumped into `run_meta.json`). To run all three, edit `CASE`, then run the
+`time_ev.py → plot.py + plot_heatmap.py → export_experiment.py` chain once per case (clear
+`plot/coeff/*.pkl` between runs so stale snapshots don't linger):
+
+- **`radial`** — no angular perturbation; isotropic control. Thermalizes to the isotropic Jüttner
+  equilibrium; the asymmetry diagnostic stays at float64 roundoff (`~1e-16`).
+- **`dipole`** — adds an `l=1,m=0` dipole (`f[2]`) carrying net `p_z`. Momentum is conserved, so the
+  `p_z → −p_z` asymmetry **persists** (the equilibrium is boosted along z).
+- **`zero_momentum`** — adds an `l=1,m=0` perturbation (`f[11]`, `f[20]` in ratio `1/√3`) with net
+  `p_z = 0`. With no conserved momentum protecting it, the asymmetry **decays** back to `~0`.
 
 ## Key architecture details
 

@@ -6,8 +6,6 @@ import pickle
 sys.path.insert(0, '../src')
 from lc import linear_comb
 
-os.makedirs("figures/heatmap_evolution", exist_ok=True)
-
 # ── flags ────────────────────────────────────────────────────────────────────
 N          = 3
 snapshots  = [0, 1, 2, 5, 10, 20, 100, 10000]   # iterations to plot
@@ -17,12 +15,14 @@ show       = False    # showing one-by-one in a loop isn't practical; browse the
 save       = True
 shared_scale = True   # True: same color scale across all frames; False: each frame auto-scales
 planes     = ['xy', 'xz', 'yz']   # all three are shown side-by-side in one figure per snapshot
-show_asymmetry = True   # plot F(u,v) - F(u,-v) instead of F(u,v) directly:
-# isolates the part of f that's odd under v -> -v (e.g. a z-axis dipole on the
-# xz/yz planes), since the dominant even/radial part exactly cancels in this
-# difference and would otherwise wash out a small asymmetry on a linear color
-# scale. Note an l=1,m=0 (dipole-along-z) perturbation is exactly zero on the
-# xy plane (z=0), so it'll show up flat there and only on xz/yz.
+# Both views are rendered each run (into separate dirs):
+#   direct     — F(u,v), the raw distribution (viridis)
+#   asymmetry  — F(u,v) - F(u,-v), isolating the part of f that's odd under
+#                v -> -v (e.g. a z-axis dipole on the xz/yz planes), since the
+#                dominant even/radial part exactly cancels and would otherwise
+#                wash out a small asymmetry on a linear color scale (coolwarm).
+# Note an l=1,m=0 (dipole-along-z) perturbation is exactly zero on the xy plane
+# (z=0), so it shows up flat there and only on xz/yz.
 # ─────────────────────────────────────────────────────────────────────────────
 
 us = np.linspace(-extent, extent, n_grid)   # horizontal in-plane axis
@@ -32,9 +32,9 @@ vs = np.linspace(-extent, extent, n_grid)   # vertical in-plane axis
 # third coordinate is held at 0. 'v' is always the axis flipped for the
 # asymmetry difference F(u,v) - F(u,-v).
 PLANE_INFO = {
-    'xy': dict(xlabel='p_x', ylabel='p_y', desc='p_z=0'),
-    'xz': dict(xlabel='p_x', ylabel='p_z', desc='p_y=0'),
-    'yz': dict(xlabel='p_y', ylabel='p_z', desc='p_x=0'),
+    'xy': dict(xlabel='ξ_x', ylabel='ξ_y', desc='ξ_z=0'),
+    'xz': dict(xlabel='ξ_x', ylabel='ξ_z', desc='ξ_y=0'),
+    'yz': dict(xlabel='ξ_y', ylabel='ξ_z', desc='ξ_x=0'),
 }
 
 def eval_plane(coeff, plane):
@@ -56,65 +56,74 @@ def eval_plane(coeff, plane):
             F[i, j] = np.exp(-r / 2) * linear_comb(coeff, r, theta, phi, N)
     return F
 
-# ── compute all (iteration, plane) panels ────────────────────────────────────
-snapshot_panels = {}   # it -> {plane: F}
-for it in snapshots:
-    path = f"coeff/{it}.pkl"
-    if not os.path.exists(path):
-        print(f"missing {path}, skipping")
-        continue
-    with open(path, 'rb') as file:
-        coeff = pickle.load(file)
-    plane_data = {}
-    for plane in planes:
-        F = eval_plane(coeff, plane)
+# ── render one view (direct f, or the v -> -v asymmetry) for all snapshots ────
+def render(show_asymmetry):
+    out_dir = f'./figures/heatmap_evolution_{"asymmetry" if show_asymmetry else "direct"}'
+    os.makedirs(out_dir, exist_ok=True)
+
+    # compute all (iteration, plane) panels
+    snapshot_panels = {}   # it -> {plane: F}
+    for it in snapshots:
+        path = f"coeff/{it}.pkl"
+        if not os.path.exists(path):
+            print(f"missing {path}, skipping")
+            continue
+        with open(path, 'rb') as file:
+            coeff = pickle.load(file)
+        plane_data = {}
+        for plane in planes:
+            F = eval_plane(coeff, plane)
+            if show_asymmetry:
+                F = F - F[::-1, :]   # F(u,v) - F(u,-v)
+            plane_data[plane] = F
+        snapshot_panels[it] = plane_data
+
+    if shared_scale:
+        all_F = [F for plane_data in snapshot_panels.values() for F in plane_data.values()]
         if show_asymmetry:
-            F = F - F[::-1, :]   # F(u,v) - F(u,-v)
-        plane_data[plane] = F
-    snapshot_panels[it] = plane_data
-
-if shared_scale:
-    all_F = [F for plane_data in snapshot_panels.values() for F in plane_data.values()]
-    if show_asymmetry:
-        vmax = max(np.abs(F).max() for F in all_F)
-        vmin = -vmax
-    else:
-        vmin = min(F.min() for F in all_F)
-        vmax = max(F.max() for F in all_F)
-
-cmap = 'coolwarm' if show_asymmetry else 'viridis'
-
-for it, plane_data in snapshot_panels.items():
-    fig, axes = plt.subplots(1, len(planes), figsize=(5*len(planes), 4.5))
-
-    if not shared_scale:
-        if show_asymmetry:
-            m = max(np.abs(F).max() for F in plane_data.values())
-            vmin, vmax = -m, m
+            vmax = max(np.abs(F).max() for F in all_F)
+            vmin = -vmax
         else:
-            vmin = min(F.min() for F in plane_data.values())
-            vmax = max(F.max() for F in plane_data.values())
+            vmin = min(F.min() for F in all_F)
+            vmax = max(F.max() for F in all_F)
 
-    for ax, plane in zip(axes, planes):
-        F = plane_data[plane]
-        info = PLANE_INFO[plane]
-        im = ax.imshow(F, extent=[-extent, extent, -extent, extent], origin='lower',
-                        cmap=cmap, vmin=vmin, vmax=vmax)
-        title = f'asymmetry, {info["desc"]}' if show_asymmetry else f'f(p), {info["desc"]}'
-        ax.set_title(title, fontsize=10)
-        ax.set_xlabel(info['xlabel'])
-        ax.set_ylabel(info['ylabel'])
-        fig.colorbar(im, ax=ax, label='f(u,v)-f(u,-v)' if show_asymmetry else 'f', shrink=0.85)
+    cmap = 'coolwarm' if show_asymmetry else 'viridis'
 
-    label = f'iter {it}' + (' (IC)' if it == 0 else '') + (' (final)' if it == 10000 else '')
-    fig.suptitle(label)
-    plt.tight_layout()
+    for it, plane_data in snapshot_panels.items():
+        fig, axes = plt.subplots(1, len(planes), figsize=(5*len(planes), 4.5))
 
-    if save:
-        figure_name = f'./figures/heatmap_evolution/{it}.png'
-        plt.savefig(figure_name, dpi=150)
-        print(f"saved {figure_name}")
+        if not shared_scale:
+            if show_asymmetry:
+                m = max(np.abs(F).max() for F in plane_data.values())
+                vmin, vmax = -m, m
+            else:
+                vmin = min(F.min() for F in plane_data.values())
+                vmax = max(F.max() for F in plane_data.values())
 
-    if show:
-        plt.show()
-    plt.close(fig)
+        for ax, plane in zip(axes, planes):
+            F = plane_data[plane]
+            info = PLANE_INFO[plane]
+            im = ax.imshow(F, extent=[-extent, extent, -extent, extent], origin='lower',
+                            cmap=cmap, vmin=vmin, vmax=vmax)
+            title = f'asymmetry, {info["desc"]}' if show_asymmetry else f'f(ξ), {info["desc"]}'
+            ax.set_title(title, fontsize=10)
+            ax.set_xlabel(info['xlabel'])
+            ax.set_ylabel(info['ylabel'])
+            fig.colorbar(im, ax=ax, label='f(u,v)-f(u,-v)' if show_asymmetry else 'f', shrink=0.85)
+
+        label = f'iter {it}' + (' (IC)' if it == 0 else '') + (' (final)' if it == 10000 else '')
+        fig.suptitle(label)
+        plt.tight_layout()
+
+        if save:
+            figure_name = f'{out_dir}/{it}.png'
+            plt.savefig(figure_name, dpi=150)
+            print(f"saved {figure_name}")
+
+        if show:
+            plt.show()
+        plt.close(fig)
+
+# render both views each run
+render(show_asymmetry=False)
+render(show_asymmetry=True)
