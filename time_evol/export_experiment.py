@@ -1,40 +1,34 @@
-"""Package one time-evolution run into a self-contained, LaTeX-ready folder.
+"""Write the README for one packaged time-evolution run.
 
-Run from time_evol/ AFTER time_ev.py (writes ../plot/coeff/run_meta.json) and
-the plot scripts (plot.py, plot_heatmap.py) have produced their figures. Reads
-run_meta.json, copies the figures, and writes a README.md describing the run.
+The plot scripts (plot.py, plot_heatmap.py) write their figures directly into
+experiments/<case>/ (axis_plots/, heatmaps_direct/, heatmaps_asymmetry/). This
+script is the final packaging step: it reads the run metadata, checks the
+figures are present, and writes a LaTeX-ready README.md alongside them.
 
     cd time_evol && python export_experiment.py
 """
 import os
 import json
 import glob
-import shutil
 
 META_PATH = '../plot/coeff/run_meta.json'
-FIG_ROOT  = '../plot/figures'
 OUT_ROOT  = 'experiments'
 
-# (source figure dir, destination subdir, caption template) for the figure sets.
 AXIS_PLOTS = [
-    ('axis_plots/xi_x.png', 'f along the ξ_x axis'),
-    ('axis_plots/xi_y.png', 'f along the ξ_y axis'),
-    ('axis_plots/xi_z.png', 'f along the ξ_z axis'),
+    ('xi_x.png', 'f along the ξ_x axis'),
+    ('xi_y.png', 'f along the ξ_y axis'),
+    ('xi_z.png', 'f along the ξ_z axis'),
 ]
 HEATMAP_SETS = [
-    ('heatmap_evolution_direct',    'heatmaps_direct',    'Direct f(ξ) slices (xy, xz, yz)'),
-    ('heatmap_evolution_asymmetry', 'heatmaps_asymmetry', 'Asymmetry F(u,v)−F(u,−v) slices (xy, xz, yz)'),
+    ('heatmaps_direct',    'Direct f(ξ) slices (xy, xz, yz)'),
+    ('heatmaps_asymmetry', 'Asymmetry F(u,v)−F(u,−v) slices (xy, xz, yz)'),
 ]
 
 
-def copy_glob(src_dir, dst_dir):
-    """Copy every .png from src_dir into dst_dir (created if needed). Returns sorted basenames."""
-    os.makedirs(dst_dir, exist_ok=True)
-    names = []
-    for src in glob.glob(os.path.join(src_dir, '*.png')):
-        shutil.copy2(src, dst_dir)
-        names.append(os.path.basename(src))
-    return sorted(names, key=lambda s: int(os.path.splitext(s)[0]) if s[0].isdigit() else s)
+def frame_numbers(figdir):
+    """Sorted snapshot iterations present in a heatmap dir (from <iter>.png names)."""
+    names = [os.path.splitext(os.path.basename(p))[0] for p in glob.glob(os.path.join(figdir, '*.png'))]
+    return sorted(names, key=lambda s: int(s) if s.isdigit() else s)
 
 
 def write_readme(meta, out_dir, heatmap_frames):
@@ -66,9 +60,8 @@ def write_readme(meta, out_dir, heatmap_frames):
 
     lines.append("## Figures\n")
     for fname, caption in AXIS_PLOTS:
-        base = os.path.basename(fname)
-        lines.append(f"- `axis_plots/{base}` — {caption}.")
-    for _src, dst, caption in HEATMAP_SETS:
+        lines.append(f"- `axis_plots/{fname}` — {caption}.")
+    for dst, caption in HEATMAP_SETS:
         frames = ", ".join(heatmap_frames.get(dst, []))
         lines.append(f"- `{dst}/` — {caption}; frames (iteration): {frames}.")
     lines.append("")
@@ -85,33 +78,29 @@ def main():
 
     case = meta['case']
     out_dir = os.path.join(OUT_ROOT, case)
-    os.makedirs(out_dir, exist_ok=True)
+    if not os.path.isdir(out_dir):
+        raise SystemExit(
+            f"missing {out_dir}/ — run plot.py and plot_heatmap.py (from plot/) first "
+            "to generate this case's figures."
+        )
 
-    # axis plots
-    axis_dst = os.path.join(out_dir, 'axis_plots')
-    os.makedirs(axis_dst, exist_ok=True)
-    for rel, _caption in AXIS_PLOTS:
-        src = os.path.join(FIG_ROOT, rel)
-        if os.path.exists(src):
-            shutil.copy2(src, axis_dst)
-        else:
-            print(f"WARNING: missing axis plot {src}")
+    # verify the figures the plot scripts should have produced
+    axis_dir = os.path.join(out_dir, 'axis_plots')
+    for fname, _caption in AXIS_PLOTS:
+        if not os.path.exists(os.path.join(axis_dir, fname)):
+            print(f"WARNING: missing axis plot {os.path.join(axis_dir, fname)}")
 
-    # heatmap sets (both views)
     heatmap_frames = {}
-    for src_name, dst_name, _caption in HEATMAP_SETS:
-        src_dir = os.path.join(FIG_ROOT, src_name)
-        dst_dir = os.path.join(out_dir, dst_name)
-        if os.path.isdir(src_dir):
-            names = copy_glob(src_dir, dst_dir)
-            heatmap_frames[dst_name] = [os.path.splitext(n)[0] for n in names]
+    for dst_name, _caption in HEATMAP_SETS:
+        figdir = os.path.join(out_dir, dst_name)
+        if os.path.isdir(figdir):
+            heatmap_frames[dst_name] = frame_numbers(figdir)
         else:
-            print(f"WARNING: missing heatmap dir {src_dir}")
+            print(f"WARNING: missing heatmap dir {figdir}")
             heatmap_frames[dst_name] = []
 
     write_readme(meta, out_dir, heatmap_frames)
-    print(f"\npackaged case '{case}' -> {out_dir}/")
-    print("  README.md, axis_plots/, heatmaps_direct/, heatmaps_asymmetry/")
+    print(f"\nwrote {out_dir}/README.md for case '{case}'")
 
 
 if __name__ == '__main__':

@@ -4,21 +4,19 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pickle
 sys.path.insert(0, '../src')
-from sparse import ind
-from lc import linear_comb
-
-os.makedirs("figures/axis_plots", exist_ok=True)
-os.makedirs("coeff", exist_ok=True)
+from plot_common import SNAPSHOTS, load_run_meta, experiment_case_dir, eval_point
 
 # ── flags ────────────────────────────────────────────────────────────────────
-N    = 3
 show = False   # one figure per axis is saved instead; browse the files
 save = True
 # ─────────────────────────────────────────────────────────────────────────────
 
-i0 = ind(0, 0, 0, N)   # = 0
-i1 = ind(1, 0, 0, N)   # = 9
-i2 = ind(2, 0, 0, N)   # = 18
+# Case and spectral order come from the run that produced the snapshots.
+meta    = load_run_meta()
+N       = meta['n']
+case    = meta['case']
+out_dir = os.path.join(experiment_case_dir(case), 'axis_plots')
+os.makedirs(out_dir, exist_ok=True)
 
 # ── evaluation grid ───────────────────────────────────────────────────────────
 n_pts  = 200
@@ -35,9 +33,8 @@ def eval_axis(coeff_vec, axis):
     f = np.zeros(len(coord_vals))
     for i, (c, r) in enumerate(zip(coord_vals, r_vals)):
         if r == 0.0:
-            f[i] = linear_comb(coeff_vec, 0.0, 0.0, 0.0, N)
-            continue
-        if axis == 'x':
+            theta, phi = 0.0, 0.0
+        elif axis == 'x':
             theta, phi = np.pi / 2, (0.0 if c > 0 else np.pi)
         elif axis == 'y':
             theta, phi = np.pi / 2, (np.pi / 2 if c > 0 else -np.pi / 2)
@@ -45,14 +42,12 @@ def eval_axis(coeff_vec, axis):
             theta, phi = (0.0 if c > 0 else np.pi), 0.0
         else:
             raise ValueError(f"unknown axis: {axis}")
-        f[i] = np.exp(-r / 2) * linear_comb(coeff_vec, r, theta, phi, N)
+        f[i] = eval_point(coeff_vec, r, theta, phi, N)
     return f
 
 # ── load snapshots ────────────────────────────────────────────────────────────
-snapshots = [0, 1, 2, 3, 5, 8, 12, 17, 20, 10000]   # iteration numbers
-
 coeffs = []
-for it in snapshots:
+for it in SNAPSHOTS:
     path = f"coeff/{it}.pkl"
     if not os.path.exists(path):
         print(f"missing {path}, skipping")
@@ -79,7 +74,7 @@ for axis in ['x', 'y', 'z']:
     plt.tight_layout()
 
     if save:
-        figure_name = f'./figures/axis_plots/xi_{axis}.png'
+        figure_name = os.path.join(out_dir, f'xi_{axis}.png')
         plt.savefig(figure_name, dpi=150)
         print(f"saved {figure_name}")
 

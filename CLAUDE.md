@@ -55,12 +55,16 @@ The build is a chain of pickled artifacts; each stage consumes the previous stag
    `plot/coeff/run_meta.json` describing the run (case, `t0`, `dt`, iterations, nonzero IC entries).
    The IC is chosen by the `CASE` flag — see "Initial-condition cases" below.
 6. **`plot/plot.py`** (1D along x/y/z axes) and **`plot/plot_heatmap.py`** (2D slices) read those
-   snapshots. `plot_heatmap.py` renders **both** views every run — `figures/heatmap_evolution_direct/`
-   (raw `f`, viridis) and `figures/heatmap_evolution_asymmetry/` (`F(u,v)−F(u,−v)`, coolwarm).
-7. **`time_evol/export_experiment.py`** → packages one run into a self-contained, LaTeX-ready folder
-   `time_evol/experiments/<case>/` (`README.md` from `run_meta.json` + `axis_plots/` +
-   `heatmaps_direct/` + `heatmaps_asymmetry/`). Run from `time_evol/` after the plot scripts. The
-   `experiments/` tree is gitignored — it is export output meant to be copied into the LaTeX writeup.
+   snapshots and `run_meta.json`, and write figures **directly** into the per-case experiment folder
+   `time_evol/experiments/<case>/` — `axis_plots/`, and (from `plot_heatmap.py`, both views every
+   run) `heatmaps_direct/` (raw `f`, viridis) and `heatmaps_asymmetry/` (`F(u,v)−F(u,−v)`, coolwarm).
+   Shared helpers (`SNAPSHOTS`, `load_run_meta`, `experiment_case_dir`, `eval_point`) live in
+   `plot/plot_common.py` so the two scripts don't duplicate the evaluation/output logic.
+7. **`time_evol/export_experiment.py`** → final packaging step: reads `run_meta.json`, checks the
+   figures are present, and writes the LaTeX-ready `README.md` into `time_evol/experiments/<case>/`.
+   Run from `time_evol/` after the plot scripts. It no longer copies figures — they are already in
+   place. The `experiments/` tree is gitignored; it is export output meant to be copied into the
+   LaTeX writeup.
 
 ## Initial-condition cases
 

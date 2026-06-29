@@ -4,17 +4,20 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pickle
 sys.path.insert(0, '../src')
-from lc import linear_comb
+from plot_common import SNAPSHOTS, load_run_meta, experiment_case_dir, eval_point
 
 # ── flags ────────────────────────────────────────────────────────────────────
-N          = 3
-snapshots  = [0, 1, 2, 5, 10, 20, 100, 10000]   # iterations to plot
 extent     = 10.0    # plot the two in-plane axes in [-extent, extent]
 n_grid     = 150      # grid resolution per axis
 show       = False    # showing one-by-one in a loop isn't practical; browse the saved files instead
 save       = True
 shared_scale = True   # True: same color scale across all frames; False: each frame auto-scales
 planes     = ['xy', 'xz', 'yz']   # all three are shown side-by-side in one figure per snapshot
+
+# Case and spectral order come from the run that produced the snapshots.
+meta = load_run_meta()
+N    = meta['n']
+case = meta['case']
 # Both views are rendered each run (into separate dirs):
 #   direct     — F(u,v), the raw distribution (viridis)
 #   asymmetry  — F(u,v) - F(u,-v), isolating the part of f that's odd under
@@ -43,9 +46,8 @@ def eval_plane(coeff, plane):
         for j, u in enumerate(us):
             r = np.hypot(u, v)
             if r == 0.0:
-                F[i, j] = linear_comb(coeff, 0.0, 0.0, 0.0, N)
-                continue
-            if plane == 'xy':
+                theta, phi = 0.0, 0.0
+            elif plane == 'xy':
                 theta, phi = np.pi / 2, np.arctan2(v, u)
             elif plane == 'xz':
                 theta, phi = np.arccos(v / r), (0.0 if u >= 0 else np.pi)
@@ -53,17 +55,18 @@ def eval_plane(coeff, plane):
                 theta, phi = np.arccos(v / r), (np.pi / 2 if u >= 0 else -np.pi / 2)
             else:
                 raise ValueError(f"unknown plane: {plane}")
-            F[i, j] = np.exp(-r / 2) * linear_comb(coeff, r, theta, phi, N)
+            F[i, j] = eval_point(coeff, r, theta, phi, N)
     return F
 
 # ── render one view (direct f, or the v -> -v asymmetry) for all snapshots ────
 def render(show_asymmetry):
-    out_dir = f'./figures/heatmap_evolution_{"asymmetry" if show_asymmetry else "direct"}'
+    view = 'asymmetry' if show_asymmetry else 'direct'
+    out_dir = os.path.join(experiment_case_dir(case), f'heatmaps_{view}')
     os.makedirs(out_dir, exist_ok=True)
 
     # compute all (iteration, plane) panels
     snapshot_panels = {}   # it -> {plane: F}
-    for it in snapshots:
+    for it in SNAPSHOTS:
         path = f"coeff/{it}.pkl"
         if not os.path.exists(path):
             print(f"missing {path}, skipping")

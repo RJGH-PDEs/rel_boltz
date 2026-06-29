@@ -99,12 +99,6 @@ if save:
         json.dump(run_meta, mf, indent=2)
     print(f"wrote run_meta.json for case '{CASE}'")
 
-# equilibrium from previous runs
-f_eq    = np.zeros(size)
-f_eq[0]  =  2.37806729
-f_eq[9]  = -0.36344549
-f_eq[18] =  0.15434533
-
 # ── helpers ───────────────────────────────────────────────────────────────────
 def save_coeff(i, coeff):
     name = f"../plot/coeff/{i}.pkl"
