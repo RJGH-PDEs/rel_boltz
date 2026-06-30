@@ -73,28 +73,44 @@ The build is a chain of pickled artifacts; each stage consumes the previous stag
    snapshots and `run_meta.json`, and write figures **directly** into the per-case experiment folder
    `time_evol/experiments/<case>/` — `axis_plots/`, and (from `plot_heatmap.py`, both views every
    run) `heatmaps_direct/` (raw `f`, viridis) and `heatmaps_asymmetry/` (`F(u,v)−F(u,−v)`, coolwarm).
-   Shared helpers (`SNAPSHOTS`, `load_run_meta`, `experiment_case_dir`, `eval_point`) live in
-   `plot/plot_common.py` so the two scripts don't duplicate the evaluation/output logic.
+   Shared helpers (`SNAPSHOTS`, `available_snapshots`, `load_run_meta`, `experiment_case_dir`,
+   `eval_point`) live in `plot/plot_common.py` so the scripts don't duplicate the
+   evaluation/output logic.
+6b. **`plot/plot_moments.py`** → conservation-law diagnostic. Reads `run_meta.json`, loads the same
+   mass matrix `M` used by `time_ev.py` (`mass_name`/`load_mass`), and for **every** saved snapshot
+   (`available_snapshots`, not the sparse `SNAPSHOTS`) computes the moments `M @ f` and pulls the five
+   collision-invariant entries via `ind(k,l,m,n)`: mass `(0,0,0)`, momentum `(0,1,-1/0/1)`, energy
+   `(1,0,0)`. The moment of `f` against test function `φ_i` is exactly `(M f)_i` (the
+   "Checking Conservation Laws" section of the LaTeX writeup). Writes `moments/moments.csv`
+   (columns `iteration, time, mass, mom_m-1, mom_m0, mom_m1, energy`) and `moments/moments.png`
+   (absolute values vs time, three panels). These quantities are conserved by the collision operator,
+   so they stay flat in time to quadrature/roundoff (mass/energy spread ~1e-9, momentum ~1e-12);
+   `mom_m0` (net p_z) is the case discriminator — see "Initial-condition cases".
 7. **`time_evol/export_experiment.py`** → final packaging step: reads `run_meta.json`, checks the
-   figures are present, and writes the LaTeX-ready `README.md` into `time_evol/experiments/<case>/`.
-   Run from `time_evol/` after the plot scripts. It no longer copies figures — they are already in
-   place. The `experiments/` tree is gitignored; it is export output meant to be copied into the
-   LaTeX writeup.
+   figures (axis, heatmap, and moments) are present, and writes the LaTeX-ready `README.md` into
+   `time_evol/experiments/<case>/`. Run from `time_evol/` after the plot scripts. It no longer copies
+   figures — they are already in place. The `experiments/` tree is gitignored; it is export output
+   meant to be copied into the LaTeX writeup.
 
 ## Initial-condition cases
 
 `time_ev.py` defines three ICs via the `CASE` flag, all sharing the "hot radial" base
 (`f[0]=2.0`, `f[9]=-0.8`); `CASE_INFO` holds each one's physical significance (the single source of
 truth, also dumped into `run_meta.json`). To run all three, edit `CASE`, then run the
-`time_ev.py → plot.py + plot_heatmap.py → export_experiment.py` chain once per case (clear
-`plot/coeff/*.pkl` between runs so stale snapshots don't linger):
+`time_ev.py → plot.py + plot_heatmap.py + plot_moments.py → export_experiment.py` chain once per
+case (clear `plot/coeff/*.pkl` between runs so stale snapshots don't linger — `plot_moments.py`
+globs all of them):
 
 - **`radial`** — no angular perturbation; isotropic control. Thermalizes to the isotropic Jüttner
-  equilibrium; the asymmetry diagnostic stays at float64 roundoff (`~1e-16`).
+  equilibrium; the asymmetry diagnostic stays at float64 roundoff (`~1e-16`). Moments: all three
+  `mom_*` identically 0.
 - **`dipole`** — adds an `l=1,m=0` dipole (`f[2]`) carrying net `p_z`. Momentum is conserved, so the
-  `p_z → −p_z` asymmetry **persists** (the equilibrium is boosted along z).
+  `p_z → −p_z` asymmetry **persists** (the equilibrium is boosted along z). Moments: `mom_m0` is a
+  nonzero constant (`~15.68` for the standard IC).
 - **`zero_momentum`** — adds an `l=1,m=0` perturbation (`f[11]`, `f[20]` in ratio `1/√3`) with net
-  `p_z = 0`. With no conserved momentum protecting it, the asymmetry **decays** back to `~0`.
+  `p_z = 0`. With no conserved momentum protecting it, the asymmetry **decays** back to `~0`. Moments:
+  `mom_m0` stays at `~0` (roundoff) the whole run, even though the distribution is asymmetric — this
+  is the key check that the IC really carries zero net momentum.
 
 ## Key architecture details
 
@@ -113,10 +129,12 @@ truth, also dumped into `run_meta.json`). To run all three, edit `CASE`, then ru
 - **Plotting module structure (single output pipeline — keep it DRY).** Each plotting file has one
   job and nothing is duplicated; don't reintroduce a second copy:
   - `plot/plot_common.py` — the only home for logic shared by the plot scripts: `eval_point`
-    (the `exp(-r/2)·linear_comb` value with the `r==0` case), the unified `SNAPSHOTS` list,
-    `load_run_meta`, and `experiment_case_dir`. Add anything both scripts need here, not in both.
+    (the `exp(-r/2)·linear_comb` value with the `r==0` case), the sparse `SNAPSHOTS` list (frames for
+    axis/heatmap plots), `available_snapshots` (every saved snapshot — what `plot_moments.py` wants),
+    `load_run_meta`, and `experiment_case_dir`. Add anything multiple scripts need here, not in each.
   - `plot/plot.py` — 1D line plots along the x/y/z axes (`eval_axis`).
   - `plot/plot_heatmap.py` — 2D plane slices, both `direct` and `asymmetry` views (`eval_plane`).
+  - `plot/plot_moments.py` — conserved-moment time series (`M @ f`); CSV + figure, no field evaluation.
   - `time_evol/export_experiment.py` — README only; it does **not** plot or copy figures.
   The plot scripts write figures **directly** into `time_evol/experiments/<case>/` (one copy, in its
   final home) and read `n`/`case` from `run_meta.json` rather than hardcoding them. There is no

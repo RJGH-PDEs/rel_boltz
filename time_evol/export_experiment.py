@@ -23,6 +23,10 @@ HEATMAP_SETS = [
     ('heatmaps_direct',    'Direct f(ξ) slices (xy, xz, yz)'),
     ('heatmaps_asymmetry', 'Asymmetry F(u,v)−F(u,−v) slices (xy, xz, yz)'),
 ]
+MOMENTS_FILES = [
+    ('moments/moments.csv', 'Collision-invariant moments (mass, momentum, energy) vs time'),
+    ('moments/moments.png', 'Conserved moments vs time (flat curves = conservation)'),
+]
 
 
 def frame_numbers(figdir):
@@ -64,6 +68,8 @@ def write_readme(meta, out_dir, heatmap_frames):
     for dst, caption in HEATMAP_SETS:
         frames = ", ".join(heatmap_frames.get(dst, []))
         lines.append(f"- `{dst}/` — {caption}; frames (iteration): {frames}.")
+    for fname, caption in MOMENTS_FILES:
+        lines.append(f"- `{fname}` — {caption}.")
     lines.append("")
 
     with open(os.path.join(out_dir, 'README.md'), 'w') as f:
@@ -98,6 +104,10 @@ def main():
         else:
             print(f"WARNING: missing heatmap dir {figdir}")
             heatmap_frames[dst_name] = []
+
+    for fname, _caption in MOMENTS_FILES:
+        if not os.path.exists(os.path.join(out_dir, fname)):
+            print(f"WARNING: missing moments output {os.path.join(out_dir, fname)}")
 
     write_readme(meta, out_dir, heatmap_frames)
     print(f"\nwrote {out_dir}/README.md for case '{case}'")

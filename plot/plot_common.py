@@ -5,6 +5,7 @@ folder, keyed by run_meta.json), which snapshots to plot, and the core
 distribution-value evaluation reused by both the 1D axis and 2D plane plots.
 """
 import os
+import glob
 import json
 import numpy as np
 from lc import linear_comb
@@ -12,6 +13,17 @@ from lc import linear_comb
 # Iterations to plot, shared by plot.py and plot_heatmap.py. All are saved by
 # time_ev.py (which stores iters 1..20 and every save_every-th step).
 SNAPSHOTS = [0, 1, 2, 5, 10, 20, 100, 10000]
+
+
+def available_snapshots(coeff_dir='coeff'):
+    """All saved snapshot iterations, sorted (from coeff/<iter>.pkl filenames).
+
+    Unlike the sparse SNAPSHOTS list (chosen for per-frame heatmaps), this returns
+    every snapshot the run actually wrote — what a moments time series wants.
+    """
+    paths = glob.glob(os.path.join(coeff_dir, '*.pkl'))
+    its = [os.path.splitext(os.path.basename(p))[0] for p in paths]
+    return sorted(int(s) for s in its if s.isdigit())
 
 
 def load_run_meta(coeff_dir='coeff'):
