@@ -14,6 +14,21 @@ harmonics in the angular directions. A function is represented by a coefficient 
 The end goal is to time-evolve `df/dt = ½ t^{-3/2} M⁻¹ Q(f, f)` and watch the distribution relax to
 a Jüttner equilibrium.
 
+## Related project — the mathematical write-up (read-only reference)
+
+This code implements the scheme derived in a **separate** LaTeX project:
+
+- **Path:** `/Users/rjgh/Documents/Research/Latex/relativistic_boltzmann`
+- It is its own git repository with its own `CLAUDE.md` (`main.tex` = the paper *"Galerkin-Petrov
+  Approach for the relativistic Boltzmann Equation"*, Gonzalez & Gamba).
+
+Treat that directory as **read-only context from here**: consult it for the derivations, notation,
+and definitions (the `ξ = tᵅ p` change of variables — which is why the plots use `ξ` axes — the
+basis functions `φ_{klm}`/`ψ_{klm}`, the `μ_{k,l}` constants, the mass matrix, the `t^{-3/2}`
+prefactor, the sparsity-inducing rotational symmetry). Do **not** edit or commit in that repo from a
+session rooted in this code project — it has its own git history and its own Claude guidance. The
+`time_evol/experiments/<case>/` exports are meant to be copied into that paper by hand.
+
 ## Environment
 
 There is no `requirements.txt`. Code runs under a conda env named **`ttenv`**
