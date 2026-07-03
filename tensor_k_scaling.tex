@@ -1,3 +1,10 @@
+\documentclass{article}
+\usepackage{amsmath, amssymb}
+\title{Numerical Observations on Radial Scaling of $Q_{i,jk}$}
+\date{}
+\begin{document}
+\maketitle
+
 % Exploratory notes on the radial scaling of the sparse collision operator
 % These are numerical findings from n=3 (k=0,1,2); verification at n=4 is pending.
 
@@ -47,11 +54,15 @@ magnetic quantum numbers} $m_i,m_s,m_t$.
 This is expected from the rotational structure of the spherical-harmonic
 factors, which contribute only Clebsch--Gordan-type constants that cancel
 in the ratio.
+Verified at $k_s=3$: both $(l_s,l_t)\in\{(1,2),(2,1)\}$ give $S_3/S_0$
+independent of $m_s,m_t$ to float64 precision.
 
 \subsection*{Scaling of the stripped integral with radial degree}
 
-Fix the test function at $(k_i, l_i, m_i)$ and one field index, say
+Fix the test function at $(k_i = 0, l_i, m_i)$ and one field index, say
 $t = (0, l_t, m_t)$, and let $k_s$ vary over $0, 1, 2$.
+(The formula below is specific to $k_i = 0$; test functions with $k_i \geq 1$
+carry a different $k_s$-scaling pattern that is not characterised here.)
 Define the \emph{stripped} sequence
 \[
   S_k \;=\; \frac{Q_{i,\,(k,\,l_s,\,m_s),\,t}}
@@ -65,15 +76,21 @@ For the pairs $(l_s, l_t) \in \{(1,2),(2,1)\}$ the stripped sequence takes
 \emph{exact integer} values:
 
 \begin{center}
-\begin{tabular}{ccc}
+\begin{tabular}{cccc}
 \hline
-$l_s$ & $S_0, S_1, S_2$ & formula \\
+$l_s$ & $S_0, S_1, S_2$ & $S_3$ (predicted) & $S_3$ (computed) \\
 \hline
-$1$ & $1,\;-3,\;7$ & $(-1)^k(k^2+k+1)$ \\
-$2$ & $1,\;-5,\;16$ & $(-1)^k\dfrac{(k+1)(k+2)(k^2+3k+6)}{12}$ \\
+$1$ & $1,\;-3,\;7$ & $-13$ & $-13$ \\
+$2$ & $1,\;-5,\;16$ & $-40$ & $-40$ \\
 \hline
 \end{tabular}
 \end{center}
+The $k=3$ values were computed by calling \texttt{operator\_numba} directly
+for a single tensor entry (test function $(0,1,0)$, field indices
+$(3,l_s,0)$ and $(0,l_t,0)$) using the $(n_\mathrm{lag},n_\mathrm{leb})=(7,9)$
+quadrature, without building the full $n=4$ tensor.
+After stripping the $\mu$ factors and normalising by $S_0$, both cases
+reproduce the formula to float64 precision.
 
 \subsection*{Combinatorial pattern}
 
@@ -87,12 +104,12 @@ The first term is $L_k^{\alpha_s-2}(0)$ (the generalised Laguerre polynomial
 at the origin); the second is a sub-leading correction that vanishes for
 $k<2$.
 
-Predictions for higher $k$ (unverified):
+Sequence values ($k=3$ verified; higher $k$ unverified):
 \begin{align*}
-  l_s = 1: &\quad S_0,S_1,S_2,S_3,S_4,\ldots
-             = 1,-3,7,-13,21,\ldots \\
-  l_s = 2: &\quad S_0,S_1,S_2,S_3,S_4,\ldots
-             = 1,-5,16,-40,85,\ldots \\
+  l_s = 1: &\quad S_0,S_1,S_2,\mathbf{S_3},S_4,\ldots
+             = 1,-3,7,\mathbf{-13},21,\ldots \\
+  l_s = 2: &\quad S_0,S_1,S_2,\mathbf{S_3},S_4,\ldots
+             = 1,-5,16,\mathbf{-40},85,\ldots \\
   l_s = 3: &\quad S_0,S_1,S_2,S_3,S_4,\ldots
              = 1,-7,29,-91,238,\ldots
 \end{align*}
@@ -150,16 +167,30 @@ collision kernel or from a generating-function identity — remains to be worked
 \subsection*{Status and next steps}
 
 \begin{itemize}
-  \item All findings are based on $n=3$ ($k=0,1,2$ only; three data points).
-  \item The formula matches the data exactly, but fitting a degree-2
-        polynomial through 3 points is not a proof.
-  \item \textbf{Verification:} run the collision-tensor pipeline at $n=4$
-        and compare the $k=3$ entries against the predicted $S_3$ values
-        ($-13$ for $l_s=1$, $-40$ for $l_s=2$, after stripping $\mu$).
-  \item The $l_s = 0$ case (isotropic mode) does not follow the same
-        pattern and appears to involve additional coupling terms.
+  \item $k=0,1,2$ from the stored $n=3$ sparse operator; $k=3$ computed
+        directly via a single \texttt{operator\_numba} call (no full $n=4$ build).
+        All four data points match the formula to float64 precision.
+  \item \textbf{Comprehensive scope check:} a full scan of all 412 entries with
+        $k_t=0$, $l_s\geq 1$, $k_s\in\{1,2\}$ in the $n=3$ sparse operator was
+        performed.  The 104 entries with $k_i=0$ and
+        $(l_s,l_t)\in\{(1,2),(2,1)\}$ all pass (every $m$ combination).
+        The remaining 308 entries, which have $k_i\geq 1$ or different
+        $(l_s,l_t)$ pairs, follow \emph{different} $k_s$-scaling patterns not
+        covered by this formula.
+  \item \textbf{Formula scope:} $k_i=0$ is required.  Entries with $k_i=1,2$
+        have their own $k_s$-dependence (verified to differ at $k=3$); these
+        are not yet characterised.  Similarly, pairs such as
+        $(l_s,l_t)\in\{(1,0),(1,1),(2,0),(2,2)\}$ do not follow the same
+        formula.
+  \item \textbf{Symmetric formula verified:} varying $k_t$ with $k_s=0$ fixed
+        yields the same combinatorial formula with $l_t$ replacing $l_s$
+        (checked at $k_t=3$: $-13$ for $l_t=1$, $-40$ for $l_t=2$).
+  \item The $l_s = 0$ case (isotropic mode) does not follow the same pattern.
   \item The analytic origin of the two-term binomial formula
         $\binom{k+\alpha-2}{k} + \binom{k+\alpha-4}{k-2}$ is unknown;
         it may arise from the Rodrigues representation of $L_k^\alpha$ or
         from a generating-function identity for the collision kernel.
+  \item Higher $k$ ($k\geq 4$) and $l_s=3$ remain unverified.
 \end{itemize}
+
+\end{document}
