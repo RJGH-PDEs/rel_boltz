@@ -110,6 +110,43 @@ recomputing the quadrature:
 \]
 The same applies symmetrically for varying $k_t$.
 
+\subsection*{Connection to the Laguerre recurrence}
+
+The three-term recurrence
+\[
+  k\,L_k^\alpha(x) = (2k-1+\alpha-x)\,L_{k-1}^\alpha(x)
+                   - (k-1+\alpha)\,L_{k-2}^\alpha(x)
+\]
+evaluated at $x=0$ (where the $x$-term drops out) gives
+\[
+  k\,A_k = (2k+\alpha_s-3)\,A_{k-1} - (k+\alpha_s-3)\,A_{k-2},
+  \qquad \alpha_s = 2l_s+2.
+\]
+Because $A_k = \binom{k+\alpha_s-2}{k}$ is a binomial coefficient,
+this three-term relation degenerates to the simpler \emph{first-order} recurrence
+\[
+  A_k = \frac{k+\alpha_s-2}{k}\,A_{k-1}, \qquad A_0 = 1,
+\]
+which generates the stripped sequence $S_k = (-1)^k(A_k + A_{k-2})$ cheaply
+without computing factorials or Gamma functions.
+
+\paragraph{Analytic hint from the reduction identity.}
+There is a standard Laguerre identity
+\[
+  L_k^{\alpha-1}(x) = L_k^{\alpha}(x) - L_{k-1}^{\alpha}(x).
+\]
+Applying it twice at $x=0$ yields
+\[
+  L_k^{\alpha-2}(0) = L_k^{\alpha}(0) - 2\,L_{k-1}^{\alpha}(0) + L_{k-2}^{\alpha}(0).
+\]
+The basis functions carry $L_{k_s}^{2l_s+2}$, while the stripped sequence
+involves $A_k = L_k^{2l_s}(0)$, a shift of $\alpha$ by $-2$.
+Applying the reduction identity twice would produce such a shift with
+a two-term remainder, which may explain the structure
+$S_k = (-1)^k(A_k + A_{k-2})$.
+The precise mechanism — whether it arises from integrations by parts on the
+collision kernel or from a generating-function identity — remains to be worked out.
+
 \subsection*{Status and next steps}
 
 \begin{itemize}
