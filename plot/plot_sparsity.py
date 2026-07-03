@@ -72,8 +72,8 @@ for t in range(n3):
             verticalalignment='bottom', horizontalalignment='right',
             bbox=dict(boxstyle='round,pad=0.2', facecolor='white', alpha=0.7))
 
-fig.supxlabel(r'$\psi_b$', fontsize=9)
-fig.supylabel(r'$\psi_a$', fontsize=9)
+fig.supxlabel(r'$\psi_t$', fontsize=9)
+fig.supylabel(r'$\psi_s$', fontsize=9)
 
 fig.suptitle(
     f'Sparsity pattern — {tag}   [panel title $(k,l,m)$ = test function]\n'
