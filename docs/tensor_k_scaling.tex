@@ -1,0 +1,128 @@
+% Exploratory notes on the radial scaling of the sparse collision operator
+% These are numerical findings from n=3 (k=0,1,2); verification at n=4 is pending.
+
+\section*{Numerical Observations on Radial Scaling of $Q_{i,jk}$}
+
+\subsection*{Setup and notation}
+
+The sparse collision operator is stored as a list of $n^3$ matrices:
+for each test-function index $i = (k_i, l_i, m_i)$, the matrix
+$\bigl[Q_{i,st}\bigr]$ with $s = (k_s, l_s, m_s)$ and $t = (k_t, l_t, m_t)$
+gives the bilinear form entries.
+The basis functions are $\tilde{f}_{klm} = \mu_{k,l}\,\varphi_{klm}$, where
+\[
+  \mu_{k,l} = \sqrt{\frac{k!}{\Gamma(k+2l+3)}},
+  \qquad
+  \varphi_{klm}(r,\theta,\varphi)
+    = c_{lm}\,L_k^{2l+2}(r)\,r^l\,P_l^{|m|}(\cos\theta)\,A_m(\varphi),
+\]
+so every entry satisfies
+\[
+  Q_{i,st} = \mu_{k_s,l_s}\,\mu_{k_t,l_t}\;\tilde{Q}_{i,st},
+\]
+where $\tilde{Q}_{i,st}$ is the integral against the un-normalised basis
+$\varphi_s$ and $\varphi_t$ (the test function $\varphi_i$ carries no $\mu$
+factor in the Petrov--Galerkin formulation).
+
+\subsection*{Structural observations from the $n=3$ operator}
+
+\paragraph{Stable support.}
+For a fixed angular pair $(l_i,m_i)$, the set of nonzero positions $(s,t)$
+in the operator matrix is \emph{identical} for $k_i = 0,1,2$.
+In particular, the nonzero count per test-function slice does not change
+with $k_i$.
+
+\paragraph{Sign alternation.}
+Every nonzero entry satisfies
+\[
+  \operatorname{sgn}\bigl(Q_{k_i,st}\bigr) = (-1)^{k_i}\,\operatorname{sgn}\bigl(Q_{0,st}\bigr).
+\]
+This is consistent with the leading sign of the generalised Laguerre
+polynomial $L_{k_i}^{\,2l_i+2}$ through the integrand.
+
+\paragraph{$m$-independence of the scaling.}
+Numerically, the ratio $Q_{k_i,st}/Q_{0,st}$ depends only on the six
+integers $(k_i,l_i,k_s,l_s,k_t,l_t)$ and is \emph{independent of all
+magnetic quantum numbers} $m_i,m_s,m_t$.
+This is expected from the rotational structure of the spherical-harmonic
+factors, which contribute only Clebsch--Gordan-type constants that cancel
+in the ratio.
+
+\subsection*{Scaling of the stripped integral with radial degree}
+
+Fix the test function at $(k_i, l_i, m_i)$ and one field index, say
+$t = (0, l_t, m_t)$, and let $k_s$ vary over $0, 1, 2$.
+Define the \emph{stripped} sequence
+\[
+  S_k \;=\; \frac{Q_{i,\,(k,\,l_s,\,m_s),\,t}}
+               {\mu_{k,\,l_s}\,\mu_{0,\,l_t}},
+\qquad k = 0,1,2,
+\]
+normalised so that $S_0 > 0$.  (An analogous sequence holds when $k_t$
+varies with $k_s$ fixed; the roles of $l_s$ and $l_t$ simply swap.)
+
+For the pairs $(l_s, l_t) \in \{(1,2),(2,1)\}$ the stripped sequence takes
+\emph{exact integer} values:
+
+\begin{center}
+\begin{tabular}{ccc}
+\hline
+$l_s$ & $S_0, S_1, S_2$ & formula \\
+\hline
+$1$ & $1,\;-3,\;7$ & $(-1)^k(k^2+k+1)$ \\
+$2$ & $1,\;-5,\;16$ & $(-1)^k\dfrac{(k+1)(k+2)(k^2+3k+6)}{12}$ \\
+\hline
+\end{tabular}
+\end{center}
+
+\subsection*{Combinatorial pattern}
+
+With $\alpha_s = 2l_s + 2$ the two sequences above are reproduced by
+\[
+  \boxed{S_k \;=\; (-1)^k\left[\binom{k+\alpha_s-2}{k}
+                              + \binom{k+\alpha_s-4}{k-2}\right]}
+\]
+where $\binom{n}{k}=0$ whenever $k<0$ or $n<k$.
+The first term is $L_k^{\alpha_s-2}(0)$ (the generalised Laguerre polynomial
+at the origin); the second is a sub-leading correction that vanishes for
+$k<2$.
+
+Predictions for higher $k$ (unverified):
+\begin{align*}
+  l_s = 1: &\quad S_0,S_1,S_2,S_3,S_4,\ldots
+             = 1,-3,7,-13,21,\ldots \\
+  l_s = 2: &\quad S_0,S_1,S_2,S_3,S_4,\ldots
+             = 1,-5,16,-40,85,\ldots \\
+  l_s = 3: &\quad S_0,S_1,S_2,S_3,S_4,\ldots
+             = 1,-7,29,-91,238,\ldots
+\end{align*}
+
+\subsection*{Extrapolation hypothesis}
+
+If the formula holds for $k\geq 3$, then a tensor entry at radial degree
+$k_s = n-1$ (i.e.\ for the next value of $n$) can be recovered without
+recomputing the quadrature:
+\[
+  Q_{i,\,(k_s,\,l_s,\,m_s),\,t}
+  \;\approx\;
+  S_{k_s}\;\mu_{k_s,\,l_s}\,\mu_{0,\,l_t}
+  \;\frac{Q_{i,\,(0,\,l_s,\,m_s),\,t}}{S_0}.
+\]
+The same applies symmetrically for varying $k_t$.
+
+\subsection*{Status and next steps}
+
+\begin{itemize}
+  \item All findings are based on $n=3$ ($k=0,1,2$ only; three data points).
+  \item The formula matches the data exactly, but fitting a degree-2
+        polynomial through 3 points is not a proof.
+  \item \textbf{Verification:} run the collision-tensor pipeline at $n=4$
+        and compare the $k=3$ entries against the predicted $S_3$ values
+        ($-13$ for $l_s=1$, $-40$ for $l_s=2$, after stripping $\mu$).
+  \item The $l_s = 0$ case (isotropic mode) does not follow the same
+        pattern and appears to involve additional coupling terms.
+  \item The analytic origin of the two-term binomial formula
+        $\binom{k+\alpha-2}{k} + \binom{k+\alpha-4}{k-2}$ is unknown;
+        it may arise from the Rodrigues representation of $L_k^\alpha$ or
+        from a generating-function identity for the collision kernel.
+\end{itemize}
