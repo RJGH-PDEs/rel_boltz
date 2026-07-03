@@ -135,11 +135,18 @@ globs all of them):
   - `plot/plot.py` — 1D line plots along the x/y/z axes (`eval_axis`).
   - `plot/plot_heatmap.py` — 2D plane slices, both `direct` and `asymmetry` views (`eval_plane`).
   - `plot/plot_moments.py` — conserved-moment time series (`M @ f`); CSV + figure, no field evaluation.
+  - `plot/plot_sparsity.py` — operator diagnostic (not case-specific): loads a sparse operator pkl
+    via `sparse.sparse_name`, and renders each test-function slice as a panel in a 3×9 grid (rows =
+    radial index `k`, columns = `(l,m)` pairs). Each panel title is the test-function `(k,l,m)`;
+    axes are `ψ_a` (row) and `ψ_b` (col); a `nnz N` annotation shows the non-zero count per slice.
+    Writes to `plot/figures/` (not `time_evol/experiments/` — this is operator structure, not a
+    time-evolution result). Run from `plot/`.
   - `time_evol/export_experiment.py` — README only; it does **not** plot or copy figures.
-  The plot scripts write figures **directly** into `time_evol/experiments/<case>/` (one copy, in its
-  final home) and read `n`/`case` from `run_meta.json` rather than hardcoding them. There is no
-  `plot/figures/` staging dir — adding one back would recreate the duplicate-output problem this
-  layout was built to remove.
+  The experiment plot scripts write figures **directly** into `time_evol/experiments/<case>/` (one
+  copy, in its final home) and read `n`/`case` from `run_meta.json` rather than hardcoding them.
+  There is no `plot/figures/` staging dir for experiment outputs — adding one back would recreate
+  the duplicate-output problem this layout was built to remove. (`plot/figures/` is used only by
+  `plot_sparsity.py` for operator diagnostics, which are not case-specific.)
 
 ## Verification
 
