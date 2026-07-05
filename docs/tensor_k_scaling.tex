@@ -1,0 +1,659 @@
+\documentclass{article}
+\usepackage{amsmath, amssymb}
+\usepackage{graphicx}
+\usepackage{amsthm}
+\newtheorem{conjecture}{Conjecture}
+\newtheorem{remark}{Remark}
+\title{Numerical Observations on Radial Scaling of $Q_{i,jk}$}
+\date{}
+\begin{document}
+\maketitle
+
+% Exploratory notes on the radial scaling of the sparse collision operator
+% These are numerical findings from n=3 (k=0,1,2); verification at n=4 is pending.
+
+\section*{Numerical Observations on Radial Scaling of $Q_{i,jk}$}
+
+\subsection*{Setup and notation}
+
+The sparse collision operator is stored as a list of $n^3$ matrices:
+for each test-function index $i = (k_i, l_i, m_i)$, the matrix
+$\bigl[Q_{i,st}\bigr]$ with $s = (k_s, l_s, m_s)$ and $t = (k_t, l_t, m_t)$
+gives the bilinear form entries.
+The basis functions are $\tilde{f}_{klm} = \mu_{k,l}\,\varphi_{klm}$, where
+\[
+  \mu_{k,l} = \sqrt{\frac{k!}{\Gamma(k+2l+3)}},
+  \qquad
+  \varphi_{klm}(r,\theta,\varphi)
+    = c_{lm}\,L_k^{2l+2}(r)\,r^l\,P_l^{|m|}(\cos\theta)\,A_m(\varphi),
+\]
+so every entry satisfies
+\[
+  Q_{i,st} = \mu_{k_s,l_s}\,\mu_{k_t,l_t}\;\tilde{Q}_{i,st},
+\]
+where $\tilde{Q}_{i,st}$ is the integral against the un-normalised basis
+$\varphi_s$ and $\varphi_t$ (the test function $\varphi_i$ carries no $\mu$
+factor in the Petrov--Galerkin formulation).
+
+\subsection*{Structural observations from the $n=3$ operator}
+
+\paragraph{Stable support.}
+For a fixed angular pair $(l_i,m_i)$, the set of nonzero positions $(s,t)$
+in the operator matrix is \emph{identical} for $k_i = 0,1,2$.
+In particular, the nonzero count per test-function slice does not change
+with $k_i$.
+
+\paragraph{Sign structure.}
+For $l_i \geq 2$, every nonzero entry satisfies
+\[
+  \operatorname{sgn}\bigl(Q_{k_i,st}\bigr) = (-1)^{k_i}\,\operatorname{sgn}\bigl(Q_{0,st}\bigr),
+\]
+consistent with the leading sign of $L_{k_i}^{\,2l_i+2}$ through the integrand.
+For $l_i = 1$ the claim does \emph{not} hold universally: some
+$(k_s,l_s,k_t,l_t)$ blocks break the alternation.
+This is expected because the $l_i=1$, $k_i=0$ entries
+$Q_{(0,1,m),st}$ are collision-invariant projections (the $k_i=0$, $l_i=1$
+test functions are the momentum-carrying basis elements), so they are
+near-zero at finite quadrature order; ratios formed by dividing by these
+entries are dominated by quadrature noise.
+The $l_i \geq 2$ case is free of this issue.
+
+\paragraph{$m$-independence of the scaling.}
+Numerically, the ratio $Q_{k_i,st}/Q_{0,st}$ depends only on the six
+integers $(k_i,l_i,k_s,l_s,k_t,l_t)$ and is \emph{independent of all
+magnetic quantum numbers} $m_i,m_s,m_t$.
+This is expected from the rotational structure of the spherical-harmonic
+factors, which contribute only Clebsch--Gordan-type constants that cancel
+in the ratio.
+Verified at $k_s=3$: both $(l_s,l_t)\in\{(1,2),(2,1)\}$ give $S_3/S_0$
+independent of $m_s,m_t$ to float64 precision.
+
+\subsection*{Scaling of the stripped integral with radial degree}
+
+Fix the test function at $(k_i = 0, l_i, m_i)$ and one field index, say
+$t = (0, l_t, m_t)$, and let $k_s$ vary over $0, 1, 2$.
+(The formula below is specific to $k_i = 0$; test functions with $k_i \geq 1$
+carry a different $k_s$-scaling pattern that is not characterised here.)
+Define the \emph{stripped} sequence
+\[
+  S_k \;=\; \frac{Q_{i,\,(k,\,l_s,\,m_s),\,t}}
+               {\mu_{k,\,l_s}\,\mu_{0,\,l_t}},
+\qquad k = 0,1,2,
+\]
+normalised so that $S_0 > 0$.  (An analogous sequence holds when $k_t$
+varies with $k_s$ fixed; the roles of $l_s$ and $l_t$ simply swap.)
+
+For the pairs $(l_s, l_t) \in \{(1,2),(2,1)\}$ the stripped sequence takes
+\emph{exact integer} values:
+
+\begin{center}
+\begin{tabular}{cccc}
+\hline
+$l_s$ & $S_0, S_1, S_2$ & $S_3$ (predicted) & $S_3$ (computed) \\
+\hline
+$1$ & $1,\;-3,\;7$ & $-13$ & $-13$ \\
+$2$ & $1,\;-5,\;16$ & $-40$ & $-40$ \\
+\hline
+\end{tabular}
+\end{center}
+The $k=3$ values were computed by calling \texttt{operator\_numba} directly
+for a single tensor entry (test function $(0,1,0)$, field indices
+$(3,l_s,0)$ and $(0,l_t,0)$) using the $(n_\mathrm{lag},n_\mathrm{leb})=(7,9)$
+quadrature, without building the full $n=4$ tensor.
+After stripping the $\mu$ factors and normalising by $S_0$, both cases
+reproduce the formula to float64 precision.
+
+\subsection*{Combinatorial pattern}
+
+With $\alpha_s = 2l_s + 2$ the two sequences above are reproduced by
+\[
+  \boxed{S_k \;=\; (-1)^k\left[\binom{k+\alpha_s-2}{k}
+                              + \binom{k+\alpha_s-4}{k-2}\right]}
+\]
+where $\binom{n}{k}=0$ whenever $k<0$ or $n<k$.
+The first term is $L_k^{\alpha_s-2}(0)$ (the generalised Laguerre polynomial
+at the origin); the second is a sub-leading correction that vanishes for
+$k<2$.
+
+Sequence values ($k=3$ verified; higher $k$ unverified):
+\begin{align*}
+  l_s = 1: &\quad S_0,S_1,S_2,\mathbf{S_3},S_4,\ldots
+             = 1,-3,7,\mathbf{-13},21,\ldots \\
+  l_s = 2: &\quad S_0,S_1,S_2,\mathbf{S_3},S_4,\ldots
+             = 1,-5,16,\mathbf{-40},85,\ldots \\
+  l_s = 3: &\quad S_0,S_1,S_2,S_3,S_4,\ldots
+             = 1,-7,29,-91,238,\ldots
+\end{align*}
+
+\subsection*{Extrapolation hypothesis}
+
+If the formula holds for $k\geq 3$, then a tensor entry at radial degree
+$k_s = n-1$ (i.e.\ for the next value of $n$) can be recovered without
+recomputing the quadrature:
+\[
+  Q_{i,\,(k_s,\,l_s,\,m_s),\,t}
+  \;\approx\;
+  S_{k_s}\;\mu_{k_s,\,l_s}\,\mu_{0,\,l_t}
+  \;\frac{Q_{i,\,(0,\,l_s,\,m_s),\,t}}{S_0}.
+\]
+The same applies symmetrically for varying $k_t$.
+
+\subsection*{Connection to the Laguerre recurrence}
+
+The three-term recurrence
+\[
+  k\,L_k^\alpha(x) = (2k-1+\alpha-x)\,L_{k-1}^\alpha(x)
+                   - (k-1+\alpha)\,L_{k-2}^\alpha(x)
+\]
+evaluated at $x=0$ (where the $x$-term drops out) gives
+\[
+  k\,A_k = (2k+\alpha_s-3)\,A_{k-1} - (k+\alpha_s-3)\,A_{k-2},
+  \qquad \alpha_s = 2l_s+2.
+\]
+Because $A_k = \binom{k+\alpha_s-2}{k}$ is a binomial coefficient,
+this three-term relation degenerates to the simpler \emph{first-order} recurrence
+\[
+  A_k = \frac{k+\alpha_s-2}{k}\,A_{k-1}, \qquad A_0 = 1,
+\]
+which generates the stripped sequence $S_k = (-1)^k(A_k + A_{k-2})$ cheaply
+without computing factorials or Gamma functions.
+
+\paragraph{Analytic hint from the reduction identity.}
+There is a standard Laguerre identity
+\[
+  L_k^{\alpha-1}(x) = L_k^{\alpha}(x) - L_{k-1}^{\alpha}(x).
+\]
+Applying it twice at $x=0$ yields
+\[
+  L_k^{\alpha-2}(0) = L_k^{\alpha}(0) - 2\,L_{k-1}^{\alpha}(0) + L_{k-2}^{\alpha}(0).
+\]
+The basis functions carry $L_{k_s}^{2l_s+2}$, while the stripped sequence
+involves $A_k = L_k^{2l_s}(0)$, a shift of $\alpha$ by $-2$.
+Applying the reduction identity twice would produce such a shift with
+a two-term remainder, which may explain the structure
+$S_k = (-1)^k(A_k + A_{k-2})$.
+The precise mechanism — whether it arises from integrations by parts on the
+collision kernel or from a generating-function identity — remains to be worked out.
+
+\subsection*{Scaling in the test-function direction ($k_i$)}
+
+Fix the field pair $(s,t)$ completely and vary the \emph{test-function} radial
+index $k_i$ for fixed $(l_i,m_i)$.
+Define the magnitude ratio
+\[
+  R_k \;=\;
+  \frac{|Q_{(k,\,l_i,\,m_i),\,s,\,t}|}{|Q_{(0,\,l_i,\,m_i),\,s,\,t}|},
+  \qquad k \geq 1.
+\]
+The analysis below restricts to $l_i = 2$; the $l_i = 1$ case is polluted
+by the near-zero collision-invariant entries discussed above.
+$k_i = 0,1,2$ are read from the stored $n=3$ sparse operator;
+$k_i = 3,4,5$ are computed via direct \texttt{operator\_numba} calls with
+the $(n_\mathrm{lag},n_\mathrm{leb})=(7,9)$ quadrature, which reproduces
+the stored values to float64 precision at $k_i=0,1,2$.
+
+\paragraph{$m$-independence.}
+$R_k$ depends only on $(k, l_i, k_s, l_s, k_t, l_t)$ and is independent of
+all magnetic quantum numbers, exactly as in the $k_s$ direction.
+
+\paragraph{No universal ratio.}
+Unlike the $k_s$ formula, $R_k$ is \emph{not} the same for all $(s,t)$ blocks
+with fixed $(l_s,l_t)$: it varies significantly with $k_s$ and $k_t$.
+The ratio $Q_{(k,l_i,m_i),s,t}/Q_{(0,l_i,m_i),s,t}$ depends on the full
+radial content $(k_s,l_s,k_t,l_t)$ of the field pair.
+
+\paragraph{Near-constant exponent.}
+For $l_i = 2$ the ratio $\log R_2 / \log R_1$ is nearly constant across all
+36 $(k_s,l_s,k_t,l_t)$ blocks: mean $1.721$, std $0.030$.
+This matches $\log S_2(l_i{=}2)/\log S_1(l_i{=}2) = \log 16/\log 5 = 1.7227$
+to within the scatter, where $S_k$ is the same combinatorial sequence as the
+$k_s$ formula (evaluated at $l_i$).  The observation is consistent with a
+power-law form
+\[
+  R_k \;\approx\; S_k(l_i)^{\,p(s,t)},
+\]
+where $p(s,t)$ is block-dependent (ranging from $\approx 1.1$ to $\approx 2.0$
+over the $n=3$ operator) but $k$-independent.  Because $p$ cancels in the
+logarithmic ratio, the exponent $\log S_2/\log S_1$ is universal even though
+$p$ is not.
+
+\paragraph{Empirical power-law approximation in $k_i$.}
+Plotting $\log R_k$ against $\log k_i$ for four representative $(l_s,l_t)$ blocks
+yields \emph{approximately} straight lines across $k_i = 1,\ldots,5$.
+A global log-log regression suggests the empirical approximation
+\[
+  R_k \;\approx\; C(s,t)\; k^{\,\alpha(s,t)},
+\]
+where both the prefactor $C$ and the fitted exponent $\alpha$ depend on the block.
+This is not an exact model: the local log-log slope increases with $k_i$
+(from $\approx 2.4$ at $k_i=1$ to $\approx 3.5$ at $k_i=5$ for the
+$(k_s{=}k_t{=}0,\,l_s{=}l_t{=}2)$ block), so $\alpha$ should be understood
+as an average slope over the range $k_i=1$--$5$, not an asymptotic exponent.
+Whether the local slope converges to a fixed $\alpha^*$ as $k_i \to \infty$
+is an open question; verifying it numerically would require computing entries
+at $k_i \gg 5$, which in turn would need quadrature sizes larger than those
+verified here, since $L_{k_i}^{2l_i+2}$ has $k_i$ nodes and the accuracy of
+the $(n_\mathrm{lag}{=}7,\,n_\mathrm{leb}{=}9)$ quadrature for high-$k_i$
+test functions has not been established.
+Fitted exponents for the four blocks with $k_s = k_t = 0$ and $m_i=0$:
+
+\begin{center}
+\begin{tabular}{cc}
+\hline
+$(l_s,\,l_t)$ & $\alpha$ \\
+\hline
+$(2,2)$ & $2.88$ \\
+$(0,2)$ & $2.67$ \\
+$(2,0)$ & $2.55$ \\
+$(1,1)$ & $2.47$ \\
+\hline
+\end{tabular}
+\end{center}
+
+Those four blocks all have $k_s=k_t=0$.
+Extending to all nine $(k_s,k_t)\in\{0,1,2\}^2$ within the $l_s=l_t=2$ family
+is consistent with the same empirical approximation and reveals how the fitted $\alpha$ depends on $(k_s,k_t)$:
+
+\begin{center}
+\begin{tabular}{c|ccc}
+  $k_s \backslash k_t$ & 0 & 1 & 2 \\
+  \hline
+  0 & 2.88 & 3.38 & 3.86 \\
+  1 & 3.38 & 3.79 & 4.18 \\
+  2 & 3.86 & 4.18 & 4.51 \\
+\end{tabular}
+\end{center}
+
+Two structural properties are immediate.
+\emph{Symmetry:} $\alpha(k_s,k_t) = \alpha(k_t,k_s)$ exactly, consistent with
+the symmetry of the bilinear operator.
+\emph{Sub-additive growth:} $\alpha$ increases monotonically with both $k_s$ and
+$k_t$, but the increment $\Delta\alpha$ per unit $k_s$ decreases as $k_t$ grows
+(from $\approx 0.50$ at $k_t=0$ to $\approx 0.33$ at $k_t=2$), so $\alpha$ is
+\emph{not} simply additive.  Specifically, $\alpha(k_s,k_t) < \alpha(k_s,0) +
+\alpha(0,k_t) - \alpha(0,0)$ for all $(k_s,k_t)\neq(0,\cdot)$ and $(\cdot,0)$,
+with the deficit growing to $-0.33$ at $(2,2)$.
+This is in contrast to the prefactor $C = R_1$, which \emph{is} exactly additive
+(see the additive structure paragraph above).
+
+The exponents cluster in the range $\alpha \approx 2.9$--$4.5$ over the
+$l_s=l_t=2$ family for $l_i=2$.
+This is consistent with the large-$k$ asymptotics of $S_k(l_i)$:
+the leading term $\binom{k+2l_i}{k} \sim k^{2l_i}/(2l_i)!$ gives
+$S_k \sim k^4$ for $l_i=2$, so $R_k \approx S_k^p \sim k^{4p}$ asymptotically.
+The fitted $\alpha$ over $k=1$--$5$ is still below the asymptotic $4p$ because
+the $k^4$ regime is not yet reached for small $k$.
+
+\paragraph{Exact additive structure for $(l_s=l_t=2)$.}
+Within the angular family $l_s=l_t=2$, the $k_i=1$ ratio satisfies
+\[
+  R_1(k_s,k_t) \;=\; R_1(k_s,0) + R_1(0,k_t) - R_1(0,0)
+\]
+to float64 precision (residuals $\lesssim 10^{-11}$).
+The $k_s$ and $k_t$ contributions to $R_1$ are therefore exactly additive:
+knowing the edge sequence $R_1(0,k)$ suffices to reconstruct the entire
+$3\times 3$ table.  Multiplied by $20$, all entries are integers:
+
+\begin{center}
+\begin{tabular}{c|ccc}
+  $k_s \backslash k_t$ & 0 & 1 & 2 \\
+  \hline
+  0 & 220 & 292 & 355 \\
+  1 & 292 & 364 & 427 \\
+  2 & 355 & 427 & 490 \\
+\end{tabular}
+\end{center}
+
+\paragraph{Edge-sequence recurrence.}
+The increments $\Delta_k = R_1(0,k) - R_1(0,k-1)$ satisfy
+\[
+  \frac{\Delta_{k+1}}{\Delta_k} \;=\; \frac{2l_t+2k+1}{2l_t+2k+2},
+\]
+verified at $k=1$ ($\Delta_2/\Delta_1 = 7/8$ vs.\ $(2\cdot2+3)/(2\cdot2+4) = 7/8$
+for $l_t=2$).  This is the ratio of a Pochhammer-type product
+\[
+  \Delta_k \;=\; \Delta_1\,\frac{(l_t+3/2)_{k-1}}{(l_t+2)_{k-1}},
+\]
+giving predicted values $\Delta_3 = 2.835$ and $R_1(0,3) = 20.585$,
+verifiable with a single \texttt{operator\_numba} call at $k_i=1$, $k_t=3$.
+
+\subsection*{Status and next steps}
+
+\begin{itemize}
+  \item $k=0,1,2$ from the stored $n=3$ sparse operator; $k=3$ computed
+        directly via a single \texttt{operator\_numba} call (no full $n=4$ build).
+        All four data points match the formula to float64 precision.
+  \item \textbf{Comprehensive scope check:} a full scan of all 412 entries with
+        $k_t=0$, $l_s\geq 1$, $k_s\in\{1,2\}$ in the $n=3$ sparse operator was
+        performed.  The 104 entries with $k_i=0$ and
+        $(l_s,l_t)\in\{(1,2),(2,1)\}$ all pass (every $m$ combination).
+        The remaining 308 entries, which have $k_i\geq 1$ or different
+        $(l_s,l_t)$ pairs, follow \emph{different} $k_s$-scaling patterns not
+        covered by this formula.
+  \item \textbf{Formula scope:} $k_i=0$ is required.  The $k_i$-scaling
+        (test-function direction) is characterised separately in the section
+        above; it does not reduce to the $k_s$ formula.
+  \item \textbf{Symmetric formula verified:} varying $k_t$ with $k_s=0$ fixed
+        yields the same combinatorial formula with $l_t$ replacing $l_s$
+        (checked at $k_t=3$: $-13$ for $l_t=1$, $-40$ for $l_t=2$).
+  \item The $l_s = 0$ case (isotropic mode) does not follow the same pattern.
+  \item The analytic origin of the two-term binomial formula
+        $\binom{k+\alpha-2}{k} + \binom{k+\alpha-4}{k-2}$ is unknown.
+  \item Higher $k$ ($k\geq 4$) and $l_s=3$ remain unverified for the $k_s$
+        formula.
+  \item The $k_i$-scaling: a global log-log fit over $k_i=1$--$5$ gives an
+        empirical approximation $R_k \approx C\,k^\alpha$, with fitted
+        $\alpha\in[2.88,4.51]$ for $l_i=2$ over all nine $(k_s,k_t)$ blocks
+        in the $l_s=l_t=2$ family.  The local log-log slope increases with
+        $k_i$, so $k^\alpha$ is not an exact model.  $\alpha$ is symmetric and
+        sub-additively increasing in $(k_s,k_t)$; the prefactor $C=R_1$ is
+        exactly additive.  Open: extension to other $(l_s,l_t)$ families,
+        analytic form of $\alpha(k_s,k_t)$, and the closed form for
+        $R_1(0,0)=11$ and $\Delta_1=3.6$.
+\end{itemize}
+
+\newpage
+\section*{Careful account: scaling of $Q_{(k_i,l_i,m_i),\,s,t}$ in the test-function
+          radial index $k_i$}
+
+\subsection*{What we are documenting}
+
+We fix a pair of trial-function indices $s = (k_s,l_s,m_s)$ and
+$t = (k_t,l_t,m_t)$ completely, fix the angular quantum numbers
+$(l_i,m_i)$ of the test function, and ask: how does the collision operator
+entry $Q_{(k_i,l_i,m_i),\,s,t}$ grow as the radial index $k_i$ increases
+from $0$ to some moderate value?
+
+This is a purely numerical question about the output of the operator
+already on disk; no new tensor builds are required.  The purpose of this
+section is to record the findings carefully, with all parameters stated
+explicitly, so that the results can be reproduced and cited.
+
+\subsection*{The operator visualised: sparsity structure}
+
+Figure~\ref{fig:sparsity} shows the full sparse operator for the $n=3$
+computation ($n_\mathrm{lag}=7$, $n_\mathrm{leb}=9$).  Each panel
+corresponds to one test function $(k_i, l_i, m_i)$; the panels are arranged
+in a $3 \times 9$ grid with rows indexed by $k_i \in \{0,1,2\}$ and columns
+by the $(l_i, m_i)$ pairs in lexicographic order.
+The axes of each panel are the trial-function indices $\psi_s$ (row) and
+$\psi_t$ (column).
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=\textwidth]{../plot/figures/sparsity_sparse_n3_lag7_leb9.png}
+  \caption{Sparse collision operator for $n=3$.  Rows: $k_i=0,1,2$.
+           Columns: $(l_i,m_i)$ pairs.  Each panel entry is nonzero where
+           the collision integral $Q_{(k_i,l_i,m_i),\,s,t}$ is nonzero.}
+  \label{fig:sparsity}
+\end{figure}
+
+Reading down a column (fixed $(l_i,m_i)$, increasing $k_i$) reveals the
+two central observations of this section.
+
+\paragraph{Observation 1 — constant support.}
+The set of nonzero positions $(s,t)$ does \emph{not} change as $k_i$
+increases from $0$ to $2$.  Every panel in the same column has identical
+sparsity structure.  Increasing the radial degree of the test function
+neither creates new nonzero entries nor annihilates existing ones.
+
+\paragraph{Observation 2 — alternating sign and growing magnitude.}
+Although the support is fixed, the \emph{values} at the nonzero positions
+are not constant.  The sign of every entry flips with each unit increment
+of $k_i$ (positive at $k_i=0$, negative at $k_i=1$, positive again at
+$k_i=2$), and the magnitude grows.  These two effects — sign alternation
+and magnitude growth — are what the rest of this section quantifies.
+
+\subsection*{Restricting to $\ell_i = 2$: excluding the first four columns}
+
+The first four columns of the grid correspond to $\ell_i = 0$ (one column)
+and $\ell_i = 1$ (three columns).  Even from a cursory inspection of
+Figure~\ref{fig:sparsity}, these columns display different behaviour from
+the rest: the $\ell_i=0$ column, for instance, does not have constant
+support across the three $k_i$ rows — a structural difference that is
+already visible by eye.  The $\ell_i=0,1$ test functions are associated
+with the collision invariants of the relativistic Boltzmann equation and
+are expected to exhibit their own peculiarities.  A careful analysis of
+those columns is deferred to a later study.
+
+Here we restrict attention entirely to $\ell_i = 2$, whose
+five test functions $(k_i, 2, m_i)$ with $m_i \in \{-2,-1,0,1,2\}$ form
+the red-boxed $3\times 5$ block shown in Figure~\ref{fig:sparsity_boxed}.
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=\textwidth]{../plot/figures/sparsity_sparse_n3_lag7_leb9_boxed.png}
+  \caption{Same sparsity plot as Figure~\ref{fig:sparsity}, with a red box
+           highlighting the $3\times 5$ block of $\ell_i=2$ test functions
+           that will be studied.  The four columns to the left of the box
+           ($\ell_i=0$ and $\ell_i=1$) are excluded because they correspond
+           to collision-invariant projections.}
+  \label{fig:sparsity_boxed}
+\end{figure}
+
+Figure~\ref{fig:sign_grid} further confirms the two observations from the
+previous section, now restricted to the $\ell_i=2$ block.
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=\textwidth]{../plot/figures/ki_normalized_grid.png}
+  \caption{Sign of each entry, $\operatorname{sgn} Q_{(k_i,2,m_i),s,t}
+           \in \{+1,-1\}$, for the $3\times 5$ block of $\ell_i=2$ test
+           functions.  Rows: $k_i\in\{0,1,2\}$; columns: $m_i\in\{-2,\ldots,2\}$.
+           The identical dot pattern across all 15 panels confirms constant
+           support; the complete color swap between rows $k_i=0$ and $k_i=1$
+           (and back at $k_i=2$) confirms the alternating sign.}
+  \label{fig:sign_grid}
+\end{figure}
+
+\subsection*{Growth of the entries with $k_i$}
+
+Having established that the support is constant and the sign alternates,
+we now look at how the \emph{magnitude} grows.
+Figure~\ref{fig:growth_signed} shows the signed ratio $R_k$
+(not taking absolute values) for all nonzero $(s,t)$,
+so sign alternation and magnitude growth are visible simultaneously.
+Figure~\ref{fig:growth_l2} shows the same data with absolute values on a
+log scale, making the rate of growth easier to compare across blocks.
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=\textwidth]{../plot/figures/ki_growth_signed.png}
+  \caption{Signed normalized growth
+           $Q_{(k_i,2,m_i),s,t}/Q_{(0,2,m_i),s,t}$
+           vs.\ $k_i \in \{0,1,2\}$, one curve per nonzero $(s,t)$,
+           coloured by $(\ell_s,\ell_t)$.
+           All five panels are identical, confirming $m_i$-independence.
+           Every curve passes through $+1$ at $k_i=0$, dips below zero at
+           $k_i=1$, and returns positive and larger at $k_i=2$.}
+  \label{fig:growth_signed}
+\end{figure}
+
+A first observation is that all five panels in Figure~\ref{fig:growth_signed}
+are identical to each other, confirming that the growth is independent of
+the magnetic quantum number $m_i$.  Table~\ref{tab:m_indep} makes this
+explicit numerically.
+Fixing the block $k_s{=}k_t{=}0$, $\ell_s{=}\ell_t{=}2$ and varying $m_i$
+(left subtable), or fixing the test function $\ell_i{=}2$, $m_i{=}0$ and
+varying $m_s,m_t$ (right subtable), the ratios $R_1$ and $R_2$ are
+identical in every row.
+
+\begin{table}[h]
+\centering
+\begin{minipage}{0.50\textwidth}
+\centering
+{\small $m_i$-independence \quad [$k_s{=}k_t{=}0,\;\ell_s{=}\ell_t{=}2$]}
+\vspace{4pt}
+
+\begin{tabular}{ccc|rr}
+\hline
+$m_i$ & $m_s$ & $m_t$ & $R_1$ & $R_2$ \\
+\hline
+$-2$ & $-2$ & $\phantom{-}0$ & $-11$ & $56.8$ \\
+$-1$ & $-2$ & $\phantom{-}1$ & $-11$ & $56.8$ \\
+$\phantom{-}0$ & $-2$ & $-2$ & $-11$ & $56.8$ \\
+$\phantom{-}1$ & $-2$ & $-1$ & $-11$ & $56.8$ \\
+$\phantom{-}2$ & $-1$ & $-1$ & $-11$ & $56.8$ \\
+\hline
+\end{tabular}
+\end{minipage}
+\hfill
+\begin{minipage}{0.45\textwidth}
+\centering
+{\small $m_s,m_t$-independence \quad [$\ell_i{=}2,\,m_i{=}0,\;k_s{=}k_t{=}0,\;\ell_s{=}\ell_t{=}2$]}
+\vspace{4pt}
+
+\begin{tabular}{cc|rr}
+\hline
+$m_s$ & $m_t$ & $R_1$ & $R_2$ \\
+\hline
+$-2$ & $-2$ & $-11$ & $56.8$ \\
+$-1$ & $-1$ & $-11$ & $56.8$ \\
+$\phantom{-}0$ & $\phantom{-}0$ & $-11$ & $56.8$ \\
+$\phantom{-}1$ & $\phantom{-}1$ & $-11$ & $56.8$ \\
+$\phantom{-}2$ & $\phantom{-}2$ & $-11$ & $56.8$ \\
+\hline
+\end{tabular}
+\end{minipage}
+\caption{Independence of the normalised growth ratios
+         $R_k = Q_{(k_i,2,m_i),s,t}/Q_{(0,2,m_i),s,t}$
+         from all magnetic quantum numbers.
+         Left: $m_i$ varies, one representative $(m_s,m_t)$ per row.
+         Right: $m_i=0$ fixed, $(m_s,m_t)$ varies.
+         All entries give $R_1=-11$ and $R_2=56.8$ exactly.}
+\label{tab:m_indep}
+\end{table}
+
+\begin{conjecture}[Independence from magnetic quantum numbers]
+For fixed radial and angular indices $(k_i, \ell_i)$, $(k_s, \ell_s)$,
+$(k_t, \ell_t)$, the normalised growth ratio
+\[
+  R_k \;=\; \frac{Q_{(k,\,\ell_i,\,m_i),\,s,\,t}}{Q_{(0,\,\ell_i,\,m_i),\,s,\,t}}
+\]
+is independent of all magnetic quantum numbers $m_i$, $m_s$, $m_t$,
+whenever the entry is nonzero.
+\end{conjecture}
+
+\begin{remark}
+The two parts of the conjecture have different levels of directness.
+
+\emph{$m_s, m_t$-independence (Table~\ref{tab:m_indep}, right).}
+This is the cleaner case.  For a fixed test function $(k_i, \ell_i, m_i)$,
+the operator slice is a single matrix.  Within that matrix, all entries
+sharing the same $(k_s, \ell_s, k_t, \ell_t)$ but differing in $(m_s, m_t)$
+are directly comparable nonzero entries of the \emph{same} slice.
+Table~\ref{tab:m_indep} (right) shows five such entries all giving
+$R_1 = -11$, $R_2 = 56.8$.
+
+\emph{$m_i$-independence (Table~\ref{tab:m_indep}, left).}
+This is more subtle.  The support of the operator slice — which $(s,t)$
+entries are nonzero — itself shifts with $m_i$ through the angular selection
+rules, so one cannot fix a single $(m_s, m_t)$ pair and compare the same
+entry across different $m_i$ values.  The claim is that at whichever
+positions a nonzero entry \emph{does} appear, the ratio takes the same value
+regardless of the particular $(m_i, m_s, m_t)$ combination.
+Table~\ref{tab:m_indep} (left) shows five entries from five different slices,
+each at a different matrix position, all giving the same $R_1$ and $R_2$.
+\end{remark}
+
+\begin{remark}[Why $m$-independence is expected]
+The basis functions factor as
+\[
+  \varphi_{k\ell m}(r,\theta,\varphi)
+  \;=\;
+  \underbrace{c_{\ell m}\,P_\ell^{|m|}(\cos\theta)\,A_m(\varphi)}_{\text{angular: depends on }\ell,m}
+  \;\times\;
+  \underbrace{L_k^{2\ell+2}(r)\,r^\ell}_{\text{radial: depends on }k,\ell\text{ only}}.
+\]
+Increasing $k$ changes \emph{only} the radial Laguerre polynomial
+$L_k^{2\ell+2}$; the spherical-harmonic factor, which carries all the $m$
+dependence, is unaffected.
+In the ratio $R_k$, the angular factors of the test function appear in both
+numerator and denominator and cancel exactly, leaving a quantity that
+depends only on the radial indices $(k, \ell_i, k_s, \ell_s, k_t, \ell_t)$.
+\end{remark}
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=\textwidth]{../plot/figures/ki_growth_l2.png}
+  \caption{Absolute normalized growth
+           $|Q_{(k_i,2,m_i),s,t}|/|Q_{(0,2,m_i),s,t}|$
+           on a log scale.  The spread between curves reflects the
+           dependence of the growth rate on $(\ell_s,\ell_t)$.}
+  \label{fig:growth_l2}
+\end{figure}
+
+\subsection*{Does $A_k$ satisfy a closed recurrence in $k_i$?}
+
+Since the collision operator is linear in the test function and the generalised
+Laguerre polynomials satisfy the three-term recurrence
+\[
+  (k+1)\,L_{k+1}^{\alpha}(r)
+  = (2k+\alpha+1-r)\,L_k^{\alpha}(r)
+  - (k+\alpha)\,L_{k-1}^{\alpha}(r),
+\]
+a natural question is whether the sequence
+$A_k = Q_{(k,\,\ell_i,\,m_i),\,s,\,t}\,/\,Q_{(0,\,\ell_i,\,m_i),\,s,\,t}$
+inherits a similar recurrence.
+We tested two forms using the representative entry
+$(\ell_i{=}2,\,m_i{=}0)$, $s{=}t{=}(0,2,0)$.
+
+\paragraph{Form~(I): Laguerre-type, 2 parameters.}
+\[
+  (k+1)\,A_{k+1} = (2k+\beta)\,A_k - (k+\gamma)\,A_{k-1}.
+\]
+Fitting $\beta$ and $\gamma$ from $k=1,2$ (two equations, two unknowns) and
+predicting $k=3,4,5$ gives relative errors of $3.7\%$, $11.7\%$, and $22.5\%$
+respectively.  The 2-parameter Laguerre form does \emph{not} hold.
+The reason is clear in hindsight: applying the Laguerre recurrence to the
+test function introduces a term $\int r'\,L_k^{\alpha}(r')\cdot[\text{integrand}]$,
+where $r'$ is the post-collision momentum magnitude varying over the quadrature.
+Because $r'$ is not a single effective value, the $r'$-correction does not reduce
+to a multiple of $A_k$ or $A_{k-1}$, and the recurrence does not close at 2 parameters.
+
+\paragraph{Form~(II): general linear, 4 parameters.}
+\[
+  (k+1)\,A_{k+1} = (ak+b)\,A_k - (ck+d)\,A_{k-1}.
+\]
+Fitting $a,b,c,d$ exactly from the four equations at $k=1,2,3,4$ and predicting
+$A_5$ gives a relative error of $\lesssim 10^{-12}$ (float64 rounding only),
+which initially suggested the sequence might be P-recursive.
+However, computing $A_6$ refutes this: the prediction overshoots by $2.7\%$.
+The value $A_6 \approx 2098.4$ was computed independently with two quadrature
+sizes, $(n_\mathrm{lag},n_\mathrm{leb})=(7,9)$ and $(11,13)$, and the two
+agree to $2\times 10^{-12}$ relative error, confirming the discrepancy is not
+a quadrature artefact.
+(The $(11,13)$ quadrature file on disk had been truncated; it was rebuilt
+using a numpy-vectorised version of the quadrature loop and verified to
+reproduce the $(7,9)$ operator entries to float64 precision before use.)
+
+\paragraph{Conclusion: the sequence is not order-2 P-recursive.}
+The 4-parameter degree-1 recurrence does not hold beyond $k=5$.
+The apparent success at $k=5$ was based on a single free prediction and
+turned out to be coincidental.
+The $k_i$ direction is fundamentally harder than the $k_s$ direction:
+in the $k_s$ formula the Laguerre polynomial was evaluated at $r=0$, collapsing
+to pure combinatorics; in the $k_i$ direction the test-function Laguerre
+polynomial $L_{k_i}^{2\ell_i+2}(r')$ is evaluated at the post-collision
+momentum $r'$, which varies continuously over the quadrature and admits no
+such simplification.
+
+\paragraph{What the data does show.}
+The seven computed values
+\[
+  (A_0,\ldots,A_6)
+  = \tfrac{1}{5}(5,\,-55,\,284,\,-980,\,2602,\,-5678,\,10492)
+\]
+are all rational with denominator~$5$ (or integer), and the unsigned
+magnitudes grow monotonically.
+The local log-log slopes
+\[
+  \alpha_k = \frac{\log|A_k/A_{k-1}|}{\log(k/(k-1))}
+\]
+are $2.37,\,3.06,\,3.39,\,3.50,\,3.38$ for $k=2,\ldots,6$,
+suggesting a possible convergence toward $\alpha^* \approx 3.4$--$3.5$
+rather than continuing to grow.
+Whether the sequence has a closed-form pattern, and what asymptotic
+power law (if any) it approaches, remain open questions.
+
+\end{document}

@@ -141,6 +141,10 @@ globs all of them):
     axes are `ψ_s` (row) and `ψ_t` (col); a `nnz N` annotation shows the non-zero count per slice.
     Writes to `plot/figures/` (not `time_evol/experiments/` — this is operator structure, not a
     time-evolution result). Run from `plot/`.
+  - `plot/plot_sparsity_boxed.py` — variant of the above with a red box highlighting the ℓ_i=2 block.
+  - `plot/plot_ki_*.py` and `plot/plot_single_entry_growth.py` — analysis scripts for the
+    `docs/tensor_k_scaling.tex` write-up (k_i scaling study). Run from `plot/`; write to
+    `plot/figures/`.
   - `time_evol/export_experiment.py` — README only; it does **not** plot or copy figures.
   The experiment plot scripts write figures **directly** into `time_evol/experiments/<case>/` (one
   copy, in its final home) and read `n`/`case` from `run_meta.json` rather than hardcoding them.
@@ -168,3 +172,21 @@ quadrature parameters, the chosen "hot radial" initial conditions, time-evolutio
 the `dt ∝ t0^{3/2}` stability rule, the basis-function fixes, and the known performance issue that
 `collision_quadrature()` needs a numpy-vectorized rewrite before `n=4` scale. Consult it before
 re-deriving any of these.
+
+## k_i scaling write-up (`docs/tensor_k_scaling.tex`)
+
+`docs/tensor_k_scaling.tex` is a standalone document recording numerical observations about how
+the collision operator entries scale with the test-function radial index `k_i`. Build it with:
+```
+cd docs && tectonic tensor_k_scaling.tex
+```
+Build artifacts (`.pdf`, `.aux`, `.log`, `.synctex.gz`) are gitignored inside `docs/`.
+
+Supporting analysis scripts (run from `docs/`):
+- `docs/check_recurrence.py` — tests whether A_k satisfies a closed three-term recurrence
+- `docs/check_recurrence_k6.py` — extends the check to k_i=6 with two quadrature sizes
+- `docs/verify_ki_scaling.py` — spot-checks specific entries
+
+`src/quadrature_np.py` — numpy-vectorised replacement for `collision_quadrature()` in
+`quadrature.py`. Produces identical output but handles large quadrature orders (e.g. (11,13))
+that the pure-Python loop cannot. Run from `src/` to rebuild a quadrature file.

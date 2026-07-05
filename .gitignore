@@ -26,3 +26,9 @@
 /plot/coeff/
 /plot/figures/
 /plot/__pycache__/
+
+# tex build artifacts
+/docs/*.aux
+/docs/*.log
+/docs/*.pdf
+/docs/*.synctex.gz
