@@ -6,7 +6,7 @@ Entry: test function (k_i, l_i=2, m_i=0), trial functions s=(0,2,0), t=(0,2,0).
 k_i=1,2 from the stored n=3 operator; k_i=3,4,5 via operator_numba (7,9).
 The alpha curves are pinned to pass through the k_i=1 data point.
 
-Run from plot/:
+Run from plot/ki_scaling/:
     ~/miniconda3/envs/ttenv/bin/python plot_single_entry_growth.py
 Writes: ../plot/figures/single_entry_growth.png
 """
@@ -17,7 +17,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
 
-sys.path.insert(0, '../src')
+sys.path.insert(0, '../../src')
 from sparse import ind
 from basis_numba import mu_const, spher_const
 from quadrature import load_quad
@@ -36,14 +36,14 @@ KI_PLOT   = np.array(KI_ALL[1:], dtype=float)   # k_i = 1..5
 ALPHAS = [2.0, 2.5, 3.0, 3.5, 4.0]
 
 # ── load ──────────────────────────────────────────────────────────────────────
-with open('../src/sparse_operators/sparse_n3_lag7_leb9.pkl', 'rb') as fh:
+with open('../../src/sparse_operators/sparse_n3_lag7_leb9.pkl', 'rb') as fh:
     raw = pickle.load(fh)
 sparse_list = raw if isinstance(raw, list) else raw['results']
 n = round(len(sparse_list) ** (1/3))
 print(f"loaded  n={n}")
 
 print("loading (7,9) quadrature …", end='', flush=True)
-raw_q, _, _ = load_quad('../src/quadratures/collision_lag7_leb9.pkl')
+raw_q, _, _ = load_quad('../../src/quadratures/collision_lag7_leb9.pkl')
 quad = np.array(raw_q, dtype=np.float64)
 print(f"  {quad.shape[0]:,} points")
 
@@ -104,6 +104,6 @@ ax.grid(True, alpha=0.25, which='both')
 ax.legend(fontsize=10, loc='upper left')
 
 plt.tight_layout()
-outpath = 'figures/single_entry_growth.png'
+outpath = '../figures/single_entry_growth.png'
 plt.savefig(outpath, dpi=150, bbox_inches='tight')
 print(f"\nsaved {outpath}")

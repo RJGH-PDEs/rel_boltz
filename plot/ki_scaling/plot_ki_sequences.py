@@ -6,7 +6,7 @@ representative per block (m-independence verified).
 Left panel:  raw Q values.
 Right panel: normalized by Q_{(0,l_i,m_i),s,t} — all curves start at 1.
 
-Run from plot/:
+Run from plot/ki_scaling/:
     ~/miniconda3/envs/ttenv/bin/python plot_ki_sequences.py
 Writes: ../plot/figures/ki_sequences.png
 """
@@ -18,7 +18,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.lines as mlines
 
-sys.path.insert(0, '../src')
+sys.path.insert(0, '../../src')
 from sparse import ind
 
 
@@ -31,7 +31,7 @@ def ind_to_klm(idx, n):
 
 
 # ── load ──────────────────────────────────────────────────────────────────────
-with open('../src/sparse_operators/sparse_n3_lag7_leb9.pkl', 'rb') as fh:
+with open('../../src/sparse_operators/sparse_n3_lag7_leb9.pkl', 'rb') as fh:
     raw = pickle.load(fh)
 sparse_list = raw if isinstance(raw, list) else raw['results']
 n = round(len(sparse_list) ** (1/3))
@@ -109,6 +109,6 @@ fig.legend(handles=legend_handles, title='$(l_s, l_t)$', loc='lower center',
            ncol=len(lt_pairs_sorted), fontsize=9, bbox_to_anchor=(0.5, -0.06))
 
 plt.tight_layout(rect=[0, 0.08, 1, 1])
-outpath = 'figures/ki_sequences.png'
+outpath = '../figures/ki_sequences.png'
 plt.savefig(outpath, dpi=150, bbox_inches='tight')
 print(f"saved {outpath}")

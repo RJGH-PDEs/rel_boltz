@@ -142,9 +142,9 @@ globs all of them):
     Writes to `plot/figures/` (not `time_evol/experiments/` — this is operator structure, not a
     time-evolution result). Run from `plot/`.
   - `plot/plot_sparsity_boxed.py` — variant of the above with a red box highlighting the ℓ_i=2 block.
-  - `plot/plot_ki_*.py` and `plot/plot_single_entry_growth.py` — analysis scripts for the
-    `docs/tensor_k_scaling.tex` write-up (k_i scaling study). Run from `plot/`; write to
-    `plot/figures/`.
+  - `plot/ki_scaling/plot_ki_*.py` and `plot/ki_scaling/plot_single_entry_growth.py` — analysis
+    scripts for the `docs/tensor_k_scaling.tex` write-up (k_i scaling study). Run from
+    `plot/ki_scaling/`; write to `plot/figures/`.
   - `time_evol/export_experiment.py` — README only; it does **not** plot or copy figures.
   The experiment plot scripts write figures **directly** into `time_evol/experiments/<case>/` (one
   copy, in its final home) and read `n`/`case` from `run_meta.json` rather than hardcoding them.

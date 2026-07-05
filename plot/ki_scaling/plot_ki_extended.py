@@ -7,7 +7,7 @@ k_i=3,4,5 are computed with the (11,13) quadrature.
 Plot: log|R_k| vs log(k_i) — polynomial growth appears as a straight line
       whose slope is the polynomial degree.
 
-Run from plot/:
+Run from plot/ki_scaling/:
     ~/miniconda3/envs/ttenv/bin/python plot_ki_extended.py
 Writes: ../plot/figures/ki_extended_l2.png
 """
@@ -18,7 +18,7 @@ from math import isqrt
 import numpy as np
 import matplotlib.pyplot as plt
 
-sys.path.insert(0, '../src')
+sys.path.insert(0, '../../src')
 from sparse import ind
 from basis_numba import mu_const, spher_const
 from quadrature import load_quad
@@ -57,7 +57,7 @@ def ind_to_klm(idx, n):
 
 
 # ── load stored operator ──────────────────────────────────────────────────────
-with open('../src/sparse_operators/sparse_n3_lag7_leb9.pkl', 'rb') as fh:
+with open('../../src/sparse_operators/sparse_n3_lag7_leb9.pkl', 'rb') as fh:
     raw = pickle.load(fh)
 sparse_list = raw if isinstance(raw, list) else raw['results']
 n = round(len(sparse_list) ** (1/3))
@@ -68,7 +68,7 @@ print(f"stored operator  n={n}")
 # growth trend up to k_i=5 — individual values may be off ~10% at high k_i
 # but the polynomial degree is clearly visible.
 print("loading (7,9) quadrature …", end='', flush=True)
-raw_q, _, _ = load_quad('../src/quadratures/collision_lag7_leb9.pkl')
+raw_q, _, _ = load_quad('../../src/quadratures/collision_lag7_leb9.pkl')
 quad = np.array(raw_q, dtype=np.float64)
 print(f"  {quad.shape[0]:,} points  ({quad.nbytes/1e9:.2f} GB)")
 
@@ -189,6 +189,6 @@ ax.legend(handles=handles+extra, fontsize=9, loc='upper left')
 ax.grid(True, alpha=0.25, which='both')
 
 plt.tight_layout()
-outpath = 'figures/ki_extended_l2.png'
+outpath = '../figures/ki_extended_l2.png'
 plt.savefig(outpath, dpi=150, bbox_inches='tight')
 print(f"\nsaved {outpath}")

@@ -8,7 +8,7 @@ for k_i = 0,1,2, one curve per nonzero (s,t) entry, coloured by (l_s,l_t).
 Unlike ki_growth_l2.py, no absolute value is taken, so the sign alternation
 (+1 at k_i=0, negative at k_i=1, positive at k_i=2) is directly visible.
 
-Run from plot/:
+Run from plot/ki_scaling/:
     ~/miniconda3/envs/ttenv/bin/python plot_ki_growth_signed.py
 Writes: ../plot/figures/ki_growth_signed.png
 """
@@ -20,7 +20,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.lines as mlines
 
-sys.path.insert(0, '../src')
+sys.path.insert(0, '../../src')
 from sparse import ind
 
 L_I    = 2
@@ -35,7 +35,7 @@ def ind_to_klm(idx, n):
     return k, l, m
 
 # ── load ──────────────────────────────────────────────────────────────────────
-with open('../src/sparse_operators/sparse_n3_lag7_leb9.pkl', 'rb') as fh:
+with open('../../src/sparse_operators/sparse_n3_lag7_leb9.pkl', 'rb') as fh:
     raw = pickle.load(fh)
 sparse_list = raw if isinstance(raw, list) else raw['results']
 n = round(len(sparse_list) ** (1/3))
@@ -102,6 +102,6 @@ fig.legend(handles=handles, title=r'$(\ell_s,\,\ell_t)$',
            fontsize=9, bbox_to_anchor=(0.5, -0.05))
 
 plt.tight_layout(rect=[0, 0.1, 1, 1])
-outpath = 'figures/ki_growth_signed.png'
+outpath = '../figures/ki_growth_signed.png'
 plt.savefig(outpath, dpi=150, bbox_inches='tight')
 print(f"saved {outpath}")

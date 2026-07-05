@@ -10,7 +10,7 @@ Fit log-log slope alpha for each block; display:
   Left  — log-log curves coloured by k_s (one curve per (k_s,k_t) block)
   Right — 3x3 heatmap of fitted alpha over (k_s,k_t) for l_s=l_t=2
 
-Run from plot/:
+Run from plot/ki_scaling/:
     ~/miniconda3/envs/ttenv/bin/python plot_ki_alpha_blocks.py
 Writes: ../plot/figures/ki_alpha_blocks.png
 """
@@ -22,7 +22,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
 
-sys.path.insert(0, '../src')
+sys.path.insert(0, '../../src')
 from sparse import ind
 from basis_numba import mu_const, spher_const
 from quadrature import load_quad
@@ -47,14 +47,14 @@ def ind_to_klm(idx, n):
 
 
 # ── load ──────────────────────────────────────────────────────────────────────
-with open('../src/sparse_operators/sparse_n3_lag7_leb9.pkl', 'rb') as fh:
+with open('../../src/sparse_operators/sparse_n3_lag7_leb9.pkl', 'rb') as fh:
     raw = pickle.load(fh)
 sparse_list = raw if isinstance(raw, list) else raw['results']
 n = round(len(sparse_list) ** (1/3))
 print(f"stored operator  n={n}")
 
 print("loading (7,9) quadrature …", end='', flush=True)
-raw_q, _, _ = load_quad('../src/quadratures/collision_lag7_leb9.pkl')
+raw_q, _, _ = load_quad('../../src/quadratures/collision_lag7_leb9.pkl')
 quad = np.array(raw_q, dtype=np.float64)
 print(f"  {quad.shape[0]:,} points")
 
@@ -178,6 +178,6 @@ ax_heat.set_title(r'Fitted $\alpha(k_s,k_t)$  for $\ell_s=\ell_t=2$, $\ell_i=2$'
 plt.colorbar(im, ax=ax_heat, label=r'$\alpha$')
 
 plt.tight_layout()
-outpath = 'figures/ki_alpha_blocks.png'
+outpath = '../figures/ki_alpha_blocks.png'
 plt.savefig(outpath, dpi=150, bbox_inches='tight')
 print(f"\nsaved {outpath}")

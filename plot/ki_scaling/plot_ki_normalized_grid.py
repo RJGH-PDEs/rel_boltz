@@ -10,7 +10,7 @@ two-tone diverging colormap.  This demonstrates:
   - alternating sign  (row k_i=1 is entirely flipped vs rows 0 and 2)
   - m-independence    (all five columns in each row are identical)
 
-Run from plot/:
+Run from plot/ki_scaling/:
     ~/miniconda3/envs/ttenv/bin/python plot_ki_normalized_grid.py
 Writes: ../plot/figures/ki_normalized_grid.png
 """
@@ -23,7 +23,7 @@ import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
 import matplotlib.cm as mcm
 
-sys.path.insert(0, '../src')
+sys.path.insert(0, '../../src')
 from sparse import ind
 
 L_I     = 2
@@ -31,7 +31,7 @@ M_VALS  = list(range(-L_I, L_I + 1))   # [-2, -1, 0, 1, 2]
 KI_VALS = [0, 1, 2]
 
 # ── load ──────────────────────────────────────────────────────────────────────
-with open('../src/sparse_operators/sparse_n3_lag7_leb9.pkl', 'rb') as fh:
+with open('../../src/sparse_operators/sparse_n3_lag7_leb9.pkl', 'rb') as fh:
     raw = pickle.load(fh)
 sparse_list = raw if isinstance(raw, list) else raw['results']
 n = round(len(sparse_list) ** (1/3))
@@ -91,6 +91,6 @@ cb = fig.colorbar(sm, ax=axes, fraction=0.018, pad=0.02, ticks=[-0.5, 0.5])
 cb.ax.set_yticklabels([r'$-1$', r'$+1$'], fontsize=11)
 cb.set_label('sign', fontsize=10)
 
-outpath = 'figures/ki_normalized_grid.png'
+outpath = '../figures/ki_normalized_grid.png'
 plt.savefig(outpath, dpi=150, bbox_inches='tight')
 print(f"saved {outpath}")
