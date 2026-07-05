@@ -15,7 +15,7 @@ Part 2 (k_s=3 extended): compute the k=3 entry via operator_numba for a broad se
         of cases — multiple (l_s,l_t), nonzero m, different test-function k_i,
         and the symmetric formula (vary k_t instead of k_s).
 
-Run from src/:
+Run from docs/:
     ~/miniconda3/envs/ttenv/bin/python verify_k_scaling.py
 """
 
@@ -25,7 +25,7 @@ from math import comb, isqrt
 
 import numpy as np
 
-sys.path.insert(0, '.')
+sys.path.insert(0, '../src')
 
 from sparse import ind
 from basis_numba import mu_const, spher_const
@@ -51,7 +51,7 @@ def ind_to_klm(idx, n):
 
 # ── load sparse operator ──────────────────────────────────────────────────────
 
-with open('sparse_operators/sparse_n3_lag7_leb9.pkl', 'rb') as f:
+with open('../src/sparse_operators/sparse_n3_lag7_leb9.pkl', 'rb') as f:
     raw = pickle.load(f)
 sparse_list = raw if isinstance(raw, list) else raw['results']
 n = round(len(sparse_list) ** (1/3))
@@ -111,7 +111,7 @@ print("Part 2  k=3 via operator_numba — extended cases")
 print("=" * 68)
 
 print("loading (7,9) quadrature ...", end='', flush=True)
-raw_q, _, _ = load_quad('quadratures/collision_lag7_leb9.pkl')
+raw_q, _, _ = load_quad('../src/quadratures/collision_lag7_leb9.pkl')
 quad = np.array(raw_q, dtype=np.float64)
 print(f"  {quad.shape[0]:,} points")
 

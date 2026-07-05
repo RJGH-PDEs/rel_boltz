@@ -185,7 +185,8 @@ Build artifacts (`.pdf`, `.aux`, `.log`, `.synctex.gz`) are gitignored inside `d
 Supporting analysis scripts (run from `docs/`):
 - `docs/check_recurrence.py` — tests whether A_k satisfies a closed three-term recurrence
 - `docs/check_recurrence_k6.py` — extends the check to k_i=6 with two quadrature sizes
-- `docs/verify_ki_scaling.py` — spot-checks specific entries
+- `docs/verify_ki_scaling.py` — spot-checks specific k_i entries
+- `docs/verify_k_scaling.py` — verifies the k_s combinatorial formula against the stored n=3 operator and extended k=3 cases
 
 `src/quadrature_np.py` — numpy-vectorised replacement for `collision_quadrature()` in
 `quadrature.py`. Produces identical output but handles large quadrature orders (e.g. (11,13))
