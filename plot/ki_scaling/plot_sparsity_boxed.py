@@ -5,9 +5,9 @@ all three k_i rows).  The first four columns (l_i=0 and l_i=1) are left
 unboxed — those test functions couple to collision invariants and are
 excluded from the k_i-scaling analysis.
 
-Run from plot/:
+Run from plot/ki_scaling/:
     ~/miniconda3/envs/ttenv/bin/python plot_sparsity_boxed.py
-Writes: ./figures/sparsity_sparse_n3_lag7_leb9_boxed.png
+Writes: ../figures/sparsity_sparse_n3_lag7_leb9_boxed.png
 """
 
 import sys
@@ -20,7 +20,7 @@ import matplotlib.cm as mcm
 import matplotlib.colors as mcolors
 import matplotlib.patches as mpatches
 
-sys.path.insert(0, '../src')
+sys.path.insert(0, '../../src')
 from sparse import sparse_name
 
 # ── config ────────────────────────────────────────────────────────────────────
@@ -29,7 +29,7 @@ n_lag = 7
 n_leb = 9
 # ─────────────────────────────────────────────────────────────────────────────
 
-pkl_path = f'../src/{sparse_name(n, n_lag, n_leb)}'
+pkl_path = f'../../src/{sparse_name(n, n_lag, n_leb)}'
 tag      = os.path.splitext(os.path.basename(pkl_path))[0]
 with open(pkl_path, 'rb') as fh:
     tensor = pickle.load(fh)
@@ -52,7 +52,7 @@ norm = mcolors.SymLogNorm(linthresh=linthresh, vmin=-vmax, vmax=vmax, base=10)
 cmap = mcm.RdBu_r.copy()
 cmap.set_bad('white')
 
-os.makedirs('./figures', exist_ok=True)
+os.makedirs('../figures', exist_ok=True)
 
 ncols = n3 // n   # 9
 nrows = n         # 3
@@ -123,6 +123,6 @@ rect = mpatches.FancyBboxPatch(
 )
 fig.add_artist(rect)
 
-fig_path = f'./figures/sparsity_{tag}_boxed.png'
+fig_path = f'../figures/sparsity_{tag}_boxed.png'
 plt.savefig(fig_path, dpi=150, bbox_inches='tight')
 print(f'saved {fig_path}')

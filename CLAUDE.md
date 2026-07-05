@@ -141,7 +141,7 @@ globs all of them):
     axes are `ψ_s` (row) and `ψ_t` (col); a `nnz N` annotation shows the non-zero count per slice.
     Writes to `plot/figures/` (not `time_evol/experiments/` — this is operator structure, not a
     time-evolution result). Run from `plot/`.
-  - `plot/plot_sparsity_boxed.py` — variant of the above with a red box highlighting the ℓ_i=2 block.
+  - `plot/ki_scaling/plot_sparsity_boxed.py` — variant of the above with a red box highlighting the ℓ_i=2 block.
   - `plot/ki_scaling/plot_ki_*.py` and `plot/ki_scaling/plot_single_entry_growth.py` — analysis
     scripts for the `docs/tensor_k_scaling.tex` write-up (k_i scaling study). Run from
     `plot/ki_scaling/`; write to `plot/figures/`.
