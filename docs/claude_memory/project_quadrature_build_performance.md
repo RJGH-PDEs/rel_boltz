@@ -1,47 +1,35 @@
 ---
 name: project_quadrature_build_performance
-description: collision_quadrature() is impractically slow/memory-heavy at n=4 scale; needs a numpy-vectorized rewrite
+description: collision_quadrature() was rewritten to numpy repeat/tile — n=4 scale (49M pts) now builds in ~2.4s at ~3.5GB RAM
 metadata: 
   node_type: memory
   type: project
   originSessionId: 12cac65b-881c-4cee-9420-9f57a1d42b0f
 ---
 
-`collision_quadrature()` in `src/quadrature.py` builds the quadrature with a
-5-fold nested **pure Python loop** (`rp, ep, rq, eq, ew`), appending a 9-element
-Python list per point. For `n=4`'s chosen parameters (`n_laguerre=11,
-n_lebedev=13`), that's `11² × 74³ ≈ 49 million` iterations — this hung for
-6+ minutes and climbed past ~3GB of memory with no end in sight before being
-killed. See [[project_quadrature_params]] for how `(11, 13)` was determined.
+`collision_quadrature()` in `src/quadrature.py` was rewritten from a 5-level
+pure-Python nested loop to a numpy-vectorized implementation using
+`np.repeat`/`np.tile`. The old loop was unusable at n=4 scale
+(`n_laguerre=11, n_lebedev=13`, ~49M pts): >6 min and >3 GB with no end in
+sight. See [[project_quadrature_params]] for how `(11,13)` was determined.
 
-**Why it's slow/memory-heavy (two symptoms, one root cause):**
-- **Speed**: 49M Python-interpreter-level loop iterations — same "pure Python
-  loop" regime benchmarked earlier in the project at ~150x slower than
-  compiled/vectorized code (see basis_numba.py history — same lesson, applied
-  to a different piece of code that never got the numba/vectorization
-  treatment).
-- **Memory**: each `quad.append([...])` creates a Python list of 9 Python
-  float objects — ~400 bytes/row of actual heap overhead instead of the
-  `9 floats × 8 bytes = 72 bytes/row` a packed array would need. At 49M rows
-  that's ~19GB instead of the ~3.5GB the data actually needs.
+**Fix implemented:** `collision_quadrature()` now builds the Cartesian product
+via `_cartesian_factor(values, axis, sizes)` (repeat/tile pattern) — O(N) time
+and memory, no Python-level loop. At `(11,13)`: builds in ~2.4s, ~3.3 GB.
+The return value is a `(N, 9) float64` numpy array (was a list of lists);
+callers that wrapped with `np.array()` are unaffected.
 
-**Suggested fix (not yet implemented):** rewrite `collision_quadrature()` to
-build the Cartesian product of the 5 independent factors (`rp, ep, rq, eq, ew`)
-directly as numpy arrays via broadcasting/`repeat`/`tile` (or `np.meshgrid`),
-so the "loop" happens in numpy's C internals rather than the Python
-interpreter. Output should be flat `float64` numpy arrays (one per column)
-at the honest ~3.5GB total, built in seconds rather than many minutes.
+**Verification (four levels, all pass):**
+1. Analytical weight sum matches `256*(4π)³` to float64 precision.
+2. Per-column point-wise diff against original (7,9) file: exactly 0 on all 9 columns.
+3. 18-entry operator sweep (varying k_i, l_i, k_s, k_t, m): all match to 0.00e+00 rel diff.
+4. Conservation entries (mass/energy, l≤2): ~1e-10 as expected, old/new agree exactly.
 
-**Workaround used for now:** decreased radial quadrature order is acceptable
-as an interim approximation — accept a bit of imprecision on n_laguerre for
-the first n=4 attempt, revisit precision later once the vectorized build
-exists. (Recall from [[project_quadrature_params]]: n_laguerre=7 is NOT fully
-converged for n=4's worst-case entries, off by ~8%; n_laguerre=11 is the
-verified-converged choice, but a lower value may be used pragmatically for an
-initial pass.)
+`src/quadrature_np.py` remains as a standalone verification script containing
+`verify_full()` (the four-level suite above) and the (11,13) rebuild
+infrastructure. It is no longer needed as a replacement — the vectorized
+implementation now lives directly in `quadrature.py`.
 
-**How to apply:** before attempting a full n=4 tensor run, either (a) write
-the vectorized quadrature builder, or (b) accept a smaller n_laguerre (with
-documented imprecision) as a stopgap. Don't reattempt the current
-nested-Python-loop builder at n=4 scale — it will not finish in reasonable
-time/memory.
+**How to apply:** `collision_quadrature()` is now ready for n=4 use.
+Run `src/quadrature_np.py` (from `src/`) any time the quadrature file
+needs to be rebuilt or re-verified.

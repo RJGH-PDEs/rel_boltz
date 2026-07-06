@@ -188,6 +188,6 @@ Supporting analysis scripts (run from `docs/`):
 - `docs/verify_ki_scaling.py` — spot-checks specific k_i entries
 - `docs/verify_k_scaling.py` — verifies the k_s combinatorial formula against the stored n=3 operator and extended k=3 cases
 
-`src/quadrature_np.py` — numpy-vectorised replacement for `collision_quadrature()` in
-`quadrature.py`. Produces identical output but handles large quadrature orders (e.g. (11,13))
-that the pure-Python loop cannot. Run from `src/` to rebuild a quadrature file.
+`src/quadrature_np.py` — verification suite for `collision_quadrature()`. The numpy
+implementation has been merged into `quadrature.py` directly; this script remains as a
+four-level correctness check (`verify_full`) and (11,13) rebuild tool. Run from `src/`.
