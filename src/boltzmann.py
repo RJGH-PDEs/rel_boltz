@@ -33,10 +33,9 @@ def free_shared_quad():
 
 def init_worker(shm_name, shape, dtype):
     """Attach to the shared memory block — runs once per worker process."""
-    global _quad_np
-    block    = shm.SharedMemory(name=shm_name)
-    _quad_np = np.array(np.ndarray(shape, dtype=dtype, buffer=block.buf))
-    block.close()
+    global _quad_np, _shm_block
+    _shm_block = shm.SharedMemory(name=shm_name)
+    _quad_np   = np.ndarray(shape, dtype=dtype, buffer=_shm_block.buf)
 
 def operator_parallel_numba(select):
     from integrand_numba import operator_numba
