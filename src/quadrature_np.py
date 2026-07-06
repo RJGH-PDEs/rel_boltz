@@ -111,13 +111,61 @@ def save_quad_np(quad, path, n_laguerre, n_lebedev):
           f"{quad.nbytes/1e9:.2f} GB on disk before compression)")
 
 
-# ── verification against existing (7,9) quadrature ───────────────────────────
+# ── comprehensive verification ────────────────────────────────────────────────
 
-def verify_against_existing(n_laguerre, n_lebedev, existing_path):
+# 18 operator entries for the sweep: (k_i,l_i,m_i, k_s,l_s,m_s, k_t,l_t,m_t)
+# Chosen to cover: varying k_i (0-2), l_i (0-2), k_s/k_t, l_s/l_t, and m≠0.
+_SWEEP = [
+    # vary k_i  (l_i=2, m_i=0, s=(0,2,0), t=(0,2,0)) — A_k sequence base
+    (0, 2, 0,  0, 2, 0,  0, 2, 0),
+    (1, 2, 0,  0, 2, 0,  0, 2, 0),
+    (2, 2, 0,  0, 2, 0,  0, 2, 0),
+    # vary l_i  (k_i=0, m_i=0)
+    (0, 0, 0,  0, 0, 0,  0, 0, 0),
+    (0, 1, 0,  0, 1, 0,  0, 2, 0),
+    # vary k_s  (k_i=0, l_i=2, k_t=0)
+    (0, 2, 0,  1, 2, 0,  0, 2, 0),
+    (0, 2, 0,  2, 2, 0,  0, 2, 0),
+    # vary k_t  (k_i=0, l_i=2, k_s=0)
+    (0, 2, 0,  0, 2, 0,  1, 2, 0),
+    (0, 2, 0,  0, 2, 0,  2, 2, 0),
+    # different l_s, l_t
+    (0, 1, 0,  0, 2, 0,  0, 1, 0),
+    (0, 2, 0,  0, 1, 0,  0, 1, 0),
+    # nonzero m
+    (0, 2,  2,  0, 2,  2,  0, 2, 0),
+    (0, 2, -2,  0, 2, -2,  0, 2, 0),
+    (0, 1,  1,  0, 1,  1,  0, 2, 0),
+    (0, 2,  1,  0, 2,  0,  0, 2, 1),
+    # mixed radial indices
+    (1, 2, 0,  1, 2, 0,  0, 2, 0),
+    (1, 1, 0,  0, 1, 0,  1, 2, 0),
+    # l_s=l_t=1, l_i=0
+    (0, 0, 0,  1, 1, 0,  1, 1, 0),
+]
+
+# Conservation entries (l≤2) that should evaluate to ~0 with the (7,9) quadrature.
+# Using the same cases as run_conservation_tests() in tests.py.
+_CONSERVED = [
+    ("mass   i=(0,0,0) s=(0,2,-2) t=(0,2,-2)", (0,0,0,  0,2,-2,  0,2,-2)),
+    ("mass   i=(0,0,0) s=(0,2, 0) t=(0,2, 0)", (0,0,0,  0,2, 0,  0,2, 0)),
+    ("energy i=(1,0,0) s=(0,2,-2) t=(0,2,-2)", (1,0,0,  0,2,-2,  0,2,-2)),
+]
+
+
+def verify_full(n_laguerre, n_lebedev, existing_path):
     """
-    Build the quadrature with collision_quadrature_np and compare against
-    a pre-existing file by computing one operator entry with each and
-    checking they agree to near float64 precision.
+    Four-level verification of collision_quadrature_np against an existing file.
+
+    1. Analytical weight sum  — must equal 256*(4π)³ to float64 precision.
+    2. Per-column point-wise  — every column of new must match old exactly (max
+       diff should be 0; floating-point order of operations is identical).
+    3. Operator entry sweep   — 18 entries spanning k_i, l_i, k_s, k_t, m;
+       old and new must agree to <1e-12 relative error on every entry.
+    4. Conservation sweep     — 3 invariant entries (mass/energy, l≤2) must be
+       ~0 (quadrature accuracy) and old/new must agree to <1e-12.
+
+    Returns the newly built quadrature array.
     """
     import sys
     sys.path.insert(0, '.')
@@ -125,47 +173,101 @@ def verify_against_existing(n_laguerre, n_lebedev, existing_path):
     from basis_numba import mu_const, spher_const
     from integrand_numba import operator_numba
 
-    print(f"\n── Verification: ({n_laguerre},{n_lebedev}) vs {existing_path} ──")
+    W  = '='
+    print(f"\n{W*64}")
+    print(f"  verify_full  ({n_laguerre},{n_lebedev})  vs  {existing_path}")
+    print(f"{W*64}")
 
-    # Build new quadrature
+    # ── build ────────────────────────────────────────────────────────────────
     t0 = time.time()
     quad_new = collision_quadrature_np(n_laguerre, n_lebedev)
     print(f"  built in {time.time()-t0:.1f}s")
 
-    # Load existing
     raw_old, _, _ = load_quad(existing_path)
     quad_old = np.array(raw_old, dtype=np.float64)
-    print(f"  existing: {quad_old.shape[0]:,} pts  new: {quad_new.shape[0]:,} pts")
+    assert quad_old.shape == quad_new.shape, \
+        f"shape mismatch: old {quad_old.shape} vs new {quad_new.shape}"
 
-    assert quad_old.shape == quad_new.shape, "point counts differ!"
-
-    # Weight-sum sanity check
-    w_old = quad_old[:, 8].sum()
+    # ── Check 1: analytical weight sum ───────────────────────────────────────
+    expected = 256.0 * (4.0 * np.pi) ** 3
     w_new = quad_new[:, 8].sum()
-    print(f"  weight sum old: {w_old:.10f}")
-    print(f"  weight sum new: {w_new:.10f}")
-    print(f"  weight sum rel diff: {abs(w_old-w_new)/abs(w_old):.2e}")
+    w_old = quad_old[:, 8].sum()
+    wdiff_new = abs(w_new - expected) / expected
+    wdiff_old = abs(w_old - expected) / expected
+    c1 = wdiff_new < 1e-12
+    print(f"\n── Check 1: analytical weight sum  (expected {expected:.6f})")
+    print(f"  old: {w_old:.10f}  rel err {wdiff_old:.2e}")
+    print(f"  new: {w_new:.10f}  rel err {wdiff_new:.2e}  {'PASS' if c1 else 'FAIL'}")
 
-    # Point-wise max difference
-    max_diff = np.max(np.abs(quad_new - quad_old))
-    print(f"  max pointwise diff (all columns): {max_diff:.2e}")
+    # ── Check 2: per-column point-wise match ─────────────────────────────────
+    col_names = ['rp', 'tp', 'pp', 'rq', 'tq', 'pq', 'tw', 'pw', 'w']
+    col_diffs = [np.max(np.abs(quad_new[:, j] - quad_old[:, j]))
+                 for j in range(9)]
+    overall = max(col_diffs)
+    c2 = overall == 0.0
+    print(f"\n── Check 2: per-column point-wise match")
+    for name, d in zip(col_names, col_diffs):
+        print(f"  {name}: {d:.2e}")
+    print(f"  overall max diff: {overall:.2e}  {'PASS' if c2 else 'FAIL'}")
 
-    # Compute one operator entry with each and compare
-    print("  JIT warmup ...", end='', flush=True)
-    _ = operator_numba(0,1,0,spher_const(1,0), 0,1,0,mu_const(0,1),spher_const(1,0),
-                       0,2,0,mu_const(0,2),spher_const(2,0), quad_old)
+    # ── JIT warmup ───────────────────────────────────────────────────────────
+    print("\n  JIT warmup ...", end='', flush=True)
+    operator_numba(0, 1, 0, spher_const(1, 0),
+                   0, 1, 0, mu_const(0, 1), spher_const(1, 0),
+                   0, 2, 0, mu_const(0, 2), spher_const(2, 0), quad_old)
     print(" done")
 
-    # Entry: test (0,2,0), field s=(0,2,0), t=(0,2,0)
-    c_i = spher_const(2, 0)
-    mu_s = mu_const(0, 2); c_s = spher_const(2, 0)
-    mu_t = mu_const(0, 2); c_t = spher_const(2, 0)
+    def ev(ki, li, mi, ks, ls, ms, kt, lt, mt, quad):
+        return operator_numba(
+            ki, li, mi, spher_const(li, mi),
+            ks, ls, ms, mu_const(ks, ls), spher_const(ls, ms),
+            kt, lt, mt, mu_const(kt, lt), spher_const(lt, mt),
+            quad)
 
-    v_old = operator_numba(0, 2, 0, c_i, 0, 2, 0, mu_s, c_s, 0, 2, 0, mu_t, c_t, quad_old)
-    v_new = operator_numba(0, 2, 0, c_i, 0, 2, 0, mu_s, c_s, 0, 2, 0, mu_t, c_t, quad_new)
-    print(f"  operator entry (old): {v_old:.10f}")
-    print(f"  operator entry (new): {v_new:.10f}")
-    print(f"  rel diff: {abs(v_old-v_new)/abs(v_old):.2e}")
+    # ── Check 3: operator entry sweep ────────────────────────────────────────
+    print(f"\n── Check 3: operator entry sweep  ({len(_SWEEP)} entries)")
+    hdr = f"  {'entry':<38}  {'old':>13}  {'rel diff':>10}  status"
+    print(hdr)
+    print("  " + "-" * (len(hdr) - 2))
+    n3_pass = n3_fail = 0
+    for entry in _SWEEP:
+        ki, li, mi, ks, ls, ms, kt, lt, mt = entry
+        v_old = ev(ki, li, mi, ks, ls, ms, kt, lt, mt, quad_old)
+        v_new = ev(ki, li, mi, ks, ls, ms, kt, lt, mt, quad_new)
+        rd = abs(v_old - v_new) / abs(v_old) if abs(v_old) > 1e-20 else abs(v_new)
+        ok = rd < 1e-12
+        if ok: n3_pass += 1
+        else:  n3_fail += 1
+        label = f"i=({ki},{li},{mi:+d}) s=({ks},{ls},{ms:+d}) t=({kt},{lt},{mt:+d})"
+        print(f"  {label:<38}  {v_old:>13.6e}  {rd:>10.2e}  {'PASS' if ok else 'FAIL'}")
+    c3 = n3_fail == 0
+    print(f"  {n3_pass}/{len(_SWEEP)} passed")
+
+    # ── Check 4: conservation sweep ──────────────────────────────────────────
+    print(f"\n── Check 4: conservation entries  (should be ~0, old ≈ new)")
+    hdr4 = f"  {'label':<44}  {'old':>11}  {'new':>11}  {'|Δ|/|old|':>10}"
+    print(hdr4)
+    print("  " + "-" * (len(hdr4) - 2))
+    n4_pass = n4_fail = 0
+    for label, (ki, li, mi, ks, ls, ms, kt, lt, mt) in _CONSERVED:
+        v_old = ev(ki, li, mi, ks, ls, ms, kt, lt, mt, quad_old)
+        v_new = ev(ki, li, mi, ks, ls, ms, kt, lt, mt, quad_new)
+        rd = abs(v_old - v_new) / abs(v_old) if abs(v_old) > 1e-20 else abs(v_new)
+        ok = rd < 1e-12
+        if ok: n4_pass += 1
+        else:  n4_fail += 1
+        print(f"  {label:<44}  {v_old:>11.3e}  {v_new:>11.3e}  {rd:>10.2e}  {'PASS' if ok else 'FAIL'}")
+    c4 = n4_fail == 0
+
+    # ── summary ──────────────────────────────────────────────────────────────
+    print(f"\n{'─'*64}")
+    print(f"  Check 1  weight sum (analytical):  {'PASS' if c1 else 'FAIL'}")
+    print(f"  Check 2  point-wise match:          {'PASS' if c2 else 'FAIL'}")
+    print(f"  Check 3  operator sweep:            {'PASS' if c3 else 'FAIL'}  ({n3_pass}/{len(_SWEEP)})")
+    print(f"  Check 4  conservation entries:      {'PASS' if c4 else 'FAIL'}  ({n4_pass}/{len(_CONSERVED)})")
+    all_pass = c1 and c2 and c3 and c4
+    print(f"  {'ALL PASS' if all_pass else 'SOME CHECKS FAILED'}")
+    print(f"{'─'*64}")
 
     return quad_new
 
@@ -177,17 +279,12 @@ if __name__ == '__main__':
     sys.path.insert(0, '.')
     from quadrature import quad_name
 
-    # Step 1: verify (7,9) against existing
-    quad_79 = verify_against_existing(
-        7, 9,
-        existing_path='quadratures/collision_lag7_leb9.pkl'
-    )
+    verify_full(7, 9, existing_path='quadratures/collision_lag7_leb9.pkl')
 
-    print("\n── Verification passed.  Building (11,13) ──────────────────────")
-    t0 = time.time()
-    quad_1113 = collision_quadrature_np(11, 13)
-    print(f"  built in {time.time()-t0:.1f}s")
-
-    out_path = quad_name('collision', 11, 13)
-    save_quad_np(quad_1113, out_path, 11, 13)
-    print(f"  done in {time.time()-t0:.1f}s total")
+    print("\n── (11,13) already built; skipping rebuild ─────────────────────")
+    print("   To rebuild: uncomment the block below and re-run.")
+    # t0 = time.time()
+    # quad_1113 = collision_quadrature_np(11, 13)
+    # out_path = quad_name('collision', 11, 13)
+    # save_quad_np(quad_1113, out_path, 11, 13)
+    # print(f"  done in {time.time()-t0:.1f}s")
