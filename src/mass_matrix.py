@@ -59,6 +59,6 @@ def generate(n, n_laguerre, tag=''):
 
 
 if __name__ == "__main__":
-    n          = 3
-    n_laguerre = 7
+    n          = 4
+    n_laguerre = 11
     generate(n=n, n_laguerre=n_laguerre)
