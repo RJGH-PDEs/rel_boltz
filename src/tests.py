@@ -7,6 +7,7 @@ Sections:
   3. Conservation tests     — Lebedev sweep for conservation entries
   4. Quadrature convergence — Laguerre/Lebedev order sweep for a hard entry
   5. Compare tensors        — diff two saved tensor pkl files
+  6. Quadrature build verify — weight sum, point-wise, operator sweep, conservation
 """
 
 import numpy as np
@@ -178,6 +179,133 @@ def compare_tensors(path_a, path_b, tol=1e-6):
         print(f"  All {len(common)} common entries match to rtol={tol}  OK")
 
 
+# ── 6. Quadrature build verification ────────────────────────────────────────
+
+# Operator entries for the sweep: (k_i,l_i,m_i, k_s,l_s,m_s, k_t,l_t,m_t).
+# Covers: k_i=0..2, l_i=0..2, k_s/k_t variants, several m≠0, mixed radial.
+_SWEEP_ENTRIES = [
+    (0, 2, 0,  0, 2, 0,  0, 2, 0),   # k_i=0 base entry
+    (1, 2, 0,  0, 2, 0,  0, 2, 0),   # k_i=1
+    (2, 2, 0,  0, 2, 0,  0, 2, 0),   # k_i=2
+    (0, 0, 0,  0, 0, 0,  0, 0, 0),   # l_i=0
+    (0, 1, 0,  0, 1, 0,  0, 2, 0),   # l_i=1
+    (0, 2, 0,  1, 2, 0,  0, 2, 0),   # k_s=1
+    (0, 2, 0,  2, 2, 0,  0, 2, 0),   # k_s=2
+    (0, 2, 0,  0, 2, 0,  1, 2, 0),   # k_t=1
+    (0, 2, 0,  0, 2, 0,  2, 2, 0),   # k_t=2
+    (0, 1, 0,  0, 2, 0,  0, 1, 0),   # l_s≠l_t
+    (0, 2, 0,  0, 1, 0,  0, 1, 0),
+    (0, 2,  2,  0, 2,  2,  0, 2, 0), # m≠0
+    (0, 2, -2,  0, 2, -2,  0, 2, 0),
+    (0, 1,  1,  0, 1,  1,  0, 2, 0),
+    (0, 2,  1,  0, 2,  0,  0, 2, 1),
+    (1, 2, 0,  1, 2, 0,  0, 2, 0),   # mixed radial
+    (1, 1, 0,  0, 1, 0,  1, 2, 0),
+    (0, 0, 0,  1, 1, 0,  1, 1, 0),   # l_s=l_t=1, l_i=0
+]
+
+# Conservation entries (l≤2) — should be ~0 with n_lebedev=9.
+_CONSERVED_ENTRIES = [
+    ("mass   i=(0,0,0) s=(0,2,-2) t=(0,2,-2)", (0,0,0,  0,2,-2,  0,2,-2)),
+    ("mass   i=(0,0,0) s=(0,2, 0) t=(0,2, 0)", (0,0,0,  0,2, 0,  0,2, 0)),
+    ("energy i=(1,0,0) s=(0,2,-2) t=(0,2,-2)", (1,0,0,  0,2,-2,  0,2,-2)),
+]
+
+
+def verify_quadrature_build(n_laguerre, n_lebedev, existing_path=None):
+    """
+    Four-level verification of collision_quadrature(n_laguerre, n_lebedev).
+
+    1. Analytical weight sum  — must equal 256*(4π)³ to float64 precision.
+    2. Point-wise match       — if existing_path given, every column must match
+       the saved reference file exactly (max diff = 0).
+    3. Operator entry sweep   — 18 entries; compared against existing_path if
+       given, otherwise checked for finiteness.
+    4. Conservation sweep     — 3 invariant entries (l≤2) should be ~0.
+
+    Run from src/.  existing_path is optional; skip Check 2 if omitted.
+    """
+    import time
+    from quadrature import collision_quadrature, load_quad
+    from basis_numba import mu_const, spher_const
+    from integrand_numba import operator_numba
+
+    print("=== Quadrature build verification ===")
+    print(f"  n_laguerre={n_laguerre}  n_lebedev={n_lebedev}")
+
+    t0 = time.time()
+    quad_new = collision_quadrature(n_laguerre, n_lebedev)
+    print(f"  built in {time.time()-t0:.1f}s  shape={quad_new.shape}")
+
+    quad_ref = None
+    if existing_path is not None:
+        raw, _, _ = load_quad(existing_path)
+        quad_ref = np.array(raw, dtype=np.float64)
+        assert quad_ref.shape == quad_new.shape, \
+            f"shape mismatch: ref {quad_ref.shape} vs new {quad_new.shape}"
+
+    # ── Check 1: analytical weight sum ───────────────────────────────────
+    expected = 256.0 * (4.0 * np.pi) ** 3
+    wdiff = abs(quad_new[:, 8].sum() - expected) / expected
+    c1 = wdiff < 1e-12
+    print(f"  [1] weight sum rel err: {wdiff:.2e}  {'PASS' if c1 else 'FAIL'}")
+
+    # ── Check 2: point-wise match ─────────────────────────────────────────
+    c2 = True
+    if quad_ref is not None:
+        col_names = ['rp','tp','pp','rq','tq','pq','tw','pw','w']
+        diffs = [np.max(np.abs(quad_new[:, j] - quad_ref[:, j])) for j in range(9)]
+        overall = max(diffs)
+        c2 = overall == 0.0
+        detail = '  '.join(f"{n}:{d:.0e}" for n, d in zip(col_names, diffs))
+        print(f"  [2] point-wise ({existing_path}): {detail}"
+              f"  {'PASS' if c2 else 'FAIL'}")
+    else:
+        print(f"  [2] point-wise: skipped (no existing_path provided)")
+
+    # ── JIT warmup ────────────────────────────────────────────────────────
+    operator_numba(0,1,0,spher_const(1,0), 0,1,0,mu_const(0,1),spher_const(1,0),
+                   0,2,0,mu_const(0,2),spher_const(2,0), quad_new)
+
+    def ev(ki, li, mi, ks, ls, ms, kt, lt, mt, quad):
+        return operator_numba(
+            ki, li, mi, spher_const(li, mi),
+            ks, ls, ms, mu_const(ks, ls), spher_const(ls, ms),
+            kt, lt, mt, mu_const(kt, lt), spher_const(lt, mt),
+            quad)
+
+    # ── Check 3: operator entry sweep ─────────────────────────────────────
+    n3_pass = n3_fail = 0
+    for entry in _SWEEP_ENTRIES:
+        ki, li, mi, ks, ls, ms, kt, lt, mt = entry
+        v_new = ev(ki, li, mi, ks, ls, ms, kt, lt, mt, quad_new)
+        if quad_ref is not None:
+            v_ref = ev(ki, li, mi, ks, ls, ms, kt, lt, mt, quad_ref)
+            rd = abs(v_new - v_ref) / abs(v_ref) if abs(v_ref) > 1e-20 else abs(v_new)
+            ok = rd < 1e-12
+        else:
+            ok = np.isfinite(v_new)
+        if ok: n3_pass += 1
+        else:  n3_fail += 1
+    c3 = n3_fail == 0
+    print(f"  [3] operator sweep: {n3_pass}/{len(_SWEEP_ENTRIES)}"
+          f"  {'PASS' if c3 else 'FAIL'}")
+
+    # ── Check 4: conservation sweep ───────────────────────────────────────
+    n4_pass = n4_fail = 0
+    for label, (ki, li, mi, ks, ls, ms, kt, lt, mt) in _CONSERVED_ENTRIES:
+        v = ev(ki, li, mi, ks, ls, ms, kt, lt, mt, quad_new)
+        ok = abs(v) < 1e-6
+        if ok: n4_pass += 1
+        else:  n4_fail += 1
+        print(f"  [4] {label}  {v:.4e}  {'PASS' if ok else 'FAIL'}")
+    c4 = n4_fail == 0
+
+    all_pass = c1 and c2 and c3 and c4
+    print(f"  {'ALL PASS' if all_pass else 'SOME CHECKS FAILED'}")
+    print("=" * 42)
+
+
 # ── main ─────────────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
@@ -189,3 +317,5 @@ if __name__ == "__main__":
     run_conservation_tests(n_laguerre)
     print()
     run_convergence_test()
+    # To run the build verifier:
+    # verify_quadrature_build(7, 9, existing_path='quadratures/collision_lag7_leb9.pkl')
