@@ -95,12 +95,10 @@ The build is a chain of pickled artifacts; each stage consumes the previous stag
 
 ## Initial-condition cases
 
-`time_ev.py` defines three ICs via the `CASE` flag, all sharing the "hot radial" base
-(`f[0]=2.0`, `f[9]=-0.8`); `CASE_INFO` holds each one's physical significance (the single source of
-truth, also dumped into `run_meta.json`). To run all three, edit `CASE`, then run the
-`time_ev.py → plot.py + plot_heatmap.py + plot_moments.py → export_experiment.py` chain once per
-case (clear `plot/coeff/*.pkl` between runs so stale snapshots don't linger — `plot_moments.py`
-globs all of them):
+`time_ev.py` defines five ICs via the `CASE` flag; `CASE_INFO` holds each one's physical significance
+(the single source of truth, also dumped into `run_meta.json`). Run the
+`time_ev.py → plot.py + plot_heatmap.py + plot_moments.py + plot_coeff_evolution.py → export_experiment.py`
+chain once per case (clear `plot/coeff/*.pkl` between runs so stale snapshots don't linger):
 
 - **`radial`** — no angular perturbation; isotropic control. Thermalizes to the isotropic Jüttner
   equilibrium; the asymmetry diagnostic stays at float64 roundoff (`~1e-16`). Moments: all three
@@ -112,6 +110,14 @@ globs all of them):
   `p_z = 0`. With no conserved momentum protecting it, the asymmetry **decays** back to `~0`. Moments:
   `mom_m0` stays at `~0` (roundoff) the whole run, even though the distribution is asymmetric — this
   is the key check that the IC really carries zero net momentum.
+- **`radial_T2`** — radial IC tuned so E_raw/(3·M_raw) = 2 (c0=2, c1=−0.4, c2=−0.142199, c3=0).
+  The T=2 Jüttner A·exp(−r/2) is exactly the k=0 basis function → zero spectral truncation error.
+  Higher modes (k=1, k=2) decay to near-zero; analytical Jüttner from IC moments coincides exactly
+  with the computed equilibrium.
+- **`radial_T2_full`** — same T=2 target but all four radial modes active (c0=2, c1=−0.4,
+  c2=−0.331730, c3=−0.1; c2 found via brentq). Produces a W-shaped double-hump IC (origin
+  suppressed, peaks at |ξ|≈2). All three higher modes (k=1,2,3) decay to near-zero within ~20
+  iterations; most striking demonstration that the solver finds the exact equilibrium.
 
 ## Key architecture details
 
@@ -136,6 +142,7 @@ globs all of them):
   - `plot/plot.py` — 1D line plots along the x/y/z axes (`eval_axis`).
   - `plot/plot_heatmap.py` — 2D plane slices, both `direct` and `asymmetry` views (`eval_plane`).
   - `plot/plot_moments.py` — conserved-moment time series (`M @ f`); CSV + figure, no field evaluation.
+  - `plot/plot_coeff_evolution.py` — time evolution of the radial l=0 coefficients (k=0..n-1); log x-axis zoomed to iter 0–100. Writes `coeff_evolution.png` to the experiment folder. Run from `plot/`.
   - `plot/plot_sparsity.py` — operator diagnostic (not case-specific): loads a sparse operator pkl
     via `sparse.sparse_name`, and renders each test-function slice as a panel in a 3×9 grid (rows =
     radial index `k`, columns = `(l,m)` pairs). Each panel title is the test-function `(k,l,m)`;
