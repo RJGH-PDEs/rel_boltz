@@ -74,8 +74,20 @@ CASE_INFO = {
             "exactly with the computed equilibrium."
         ),
     ),
+    'radial_T2_full': dict(
+        label='T=2 radial, all 4 modes (exact Jüttner test)',
+        significance=(
+            "Same T=2 target as radial_T2 but all four radial modes (k=0..3) are "
+            "nonzero in the IC. c2 is chosen via brentq so that E_raw/(3*M_raw)=2 "
+            "exactly given c0=2, c1=-0.4, c3=-0.1. Because the equilibrium "
+            "A*exp(-r/2) is still the k=0 mode, all higher modes must decay to "
+            "zero — the k=3 mode decays in addition to k=1 and k=2. Demonstrates "
+            "that the truncation-error-free convergence holds even when the full "
+            "basis is initially excited."
+        ),
+    ),
 }
-CASE = 'radial_T2'   # 'radial' | 'dipole' | 'zero_momentum' | 'radial_T2'
+CASE = 'radial_T2_full'   # 'radial' | 'dipole' | 'zero_momentum' | 'radial_T2' | 'radial_T2_full'
 
 f     = np.zeros(size)
 f[0]  =  2.0    # ind(0,0,0,4)
@@ -97,6 +109,12 @@ elif CASE == 'radial_T2':
     f[16] = -0.4       # ind(1,0,0,4)
     f[32] = -0.142199  # ind(2,0,0,4)  chosen so T=2
     f[48] =  0.0       # ind(3,0,0,4)
+elif CASE == 'radial_T2_full':
+    # all 4 modes; c2 tuned so E/(3M)=2 with c1=-0.4, c3=-0.1
+    f[0]  =  2.0       # ind(0,0,0,4)
+    f[16] = -0.4       # ind(1,0,0,4)
+    f[32] = -0.331730  # ind(2,0,0,4)  chosen so T=2
+    f[48] = -0.1       # ind(3,0,0,4)
 
 # ── run metadata (consumed by ../time_evol/export_experiment.py) ────────────────
 # Decode each nonzero IC index back to (k, l, m) using the project index map.
