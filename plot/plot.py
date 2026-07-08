@@ -3,7 +3,6 @@ import sys
 import matplotlib.pyplot as plt
 import numpy as np
 import pickle
-from scipy.optimize import curve_fit
 sys.path.insert(0, '../src')
 from plot_common import SNAPSHOTS, load_run_meta, experiment_case_dir, eval_point
 
@@ -59,19 +58,22 @@ for it in SNAPSHOTS:
 cmap   = plt.cm.viridis
 colors = cmap(np.linspace(0, 1, len(coeffs)))
 
-# For the radial case: fit Jüttner f_J(r) = A * exp(-r/T) from the final snapshot
-# and overlay it as an analytical equilibrium reference.
+# For the radial case: compute the Jüttner A and T analytically from the IC's
+# raw phase-space moments (conserved throughout the evolution).
+# For massless particles in 3D:
+#   M = 4π ∫ f(r) r² dr,   E = 4π ∫ r f(r) r² dr
+#   T = E / (3M),           A = M / (8π T³)
 juttner_params = None
-if case == 'radial' and coeffs:
-    _, final_coeff = coeffs[-1]
-    r_fit = np.linspace(0.1, 15.0, 300)
-    f_eq  = np.array([eval_point(final_coeff, r, 0.0, 0.0, N) for r in r_fit])
-    try:
-        popt, _ = curve_fit(lambda r, A, T: A * np.exp(-r / T), r_fit, f_eq, p0=[0.3, 2.5])
-        juttner_params = popt
-        print(f"Jüttner fit: A={popt[0]:.4f}, T={popt[1]:.4f}")
-    except Exception as e:
-        print(f"Jüttner fit failed: {e}")
+if case.startswith('radial') and any(it == 0 for it, _ in coeffs):
+    _, ic_coeff = next((it, c) for it, c in coeffs if it == 0)
+    r_int = np.linspace(0.0, 30.0, 5000)
+    f_int = np.array([eval_point(ic_coeff, r, 0.0, 0.0, N) for r in r_int])
+    M_raw = 4 * np.pi * np.trapezoid(f_int * r_int**2, r_int)
+    E_raw = 4 * np.pi * np.trapezoid(f_int * r_int**3, r_int)
+    T = E_raw / (3 * M_raw)
+    A = M_raw / (8 * np.pi * T**3)
+    juttner_params = (A, T)
+    print(f"Jüttner from IC moments: M={M_raw:.4f}, E={E_raw:.4f}, T={T:.4f}, A={A:.4f}")
 
 num_iters = meta.get('num_iterations', 10000)
 
@@ -86,7 +88,7 @@ for axis in ['x', 'y', 'z']:
         A, T = juttner_params
         j_vals = A * np.exp(-r_vals / T)
         ax.plot(coord_vals, j_vals, 'k--', linewidth=1.5,
-                label=f'Jüttner  A={A:.3f}, T={T:.3f}')
+                label=f'Jüttner (from IC)  A={A:.3f}, T={T:.3f}')
 
     ax.set_title(f'time evolution of f along the ξ_{axis} axis')
     ax.set_xlabel(f'ξ_{axis}')

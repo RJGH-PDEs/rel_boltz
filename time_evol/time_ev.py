@@ -64,8 +64,18 @@ CASE_INFO = {
             "to the isotropic equilibrium."
         ),
     ),
+    'radial_T2': dict(
+        label='T=2 radial (exact Jüttner test)',
+        significance=(
+            "Radial IC tuned so that E_raw/(3*M_raw) = 2, making the target "
+            "equilibrium f_J = A*exp(-r/2). This Jüttner lives exactly in the "
+            "n=4 trial basis (it is the k=0 mode), so the spectral truncation "
+            "error is zero and the analytical Jüttner from IC moments coincides "
+            "exactly with the computed equilibrium."
+        ),
+    ),
 }
-CASE = 'radial'   # 'radial' | 'dipole' | 'zero_momentum'
+CASE = 'radial_T2'   # 'radial' | 'dipole' | 'zero_momentum' | 'radial_T2'
 
 f     = np.zeros(size)
 f[0]  =  2.0    # ind(0,0,0,4)
@@ -81,6 +91,12 @@ if CASE == 'dipole':
 elif CASE == 'zero_momentum':
     f[18] = 0.1            # ind(1,1,0,4)
     f[34] = 0.1 / sqrt(3)  # ind(2,1,0,4)  ratio cancels net p_z -> asymmetry decays
+elif CASE == 'radial_T2':
+    # c1=-0.4, c2 tuned so E/(3M)=2 exactly; equilibrium is A*exp(-r/2) ∈ basis
+    f[0]  =  2.0       # ind(0,0,0,4)
+    f[16] = -0.4       # ind(1,0,0,4)
+    f[32] = -0.142199  # ind(2,0,0,4)  chosen so T=2
+    f[48] =  0.0       # ind(3,0,0,4)
 
 # ── run metadata (consumed by ../time_evol/export_experiment.py) ────────────────
 # Decode each nonzero IC index back to (k, l, m) using the project index map.
