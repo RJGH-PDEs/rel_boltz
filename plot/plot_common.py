@@ -38,9 +38,9 @@ def load_run_meta(coeff_dir='coeff'):
         return json.load(f)
 
 
-def experiment_case_dir(case):
-    """Per-case output folder, relative to the plot/ cwd (mirrors ../src convention)."""
-    return os.path.join('..', 'time_evol', 'experiments', case)
+def experiment_case_dir(case, n):
+    """Per-case output folder, relative to the plot/ cwd. Includes n to keep n=3 and n=4 separate."""
+    return os.path.join('..', 'time_evol', 'experiments', f'{case}_n{n}')
 
 
 def eval_point(coeff, r, theta, phi, N):

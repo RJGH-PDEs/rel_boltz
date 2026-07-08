@@ -61,7 +61,7 @@ def eval_plane(coeff, plane):
 # ── render one view (direct f, or the v -> -v asymmetry) for all snapshots ────
 def render(show_asymmetry):
     view = 'asymmetry' if show_asymmetry else 'direct'
-    out_dir = os.path.join(experiment_case_dir(case), f'heatmaps_{view}')
+    out_dir = os.path.join(experiment_case_dir(case, N), f'heatmaps_{view}')
     os.makedirs(out_dir, exist_ok=True)
 
     # compute all (iteration, plane) panels

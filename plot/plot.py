@@ -3,6 +3,7 @@ import sys
 import matplotlib.pyplot as plt
 import numpy as np
 import pickle
+from scipy.optimize import curve_fit
 sys.path.insert(0, '../src')
 from plot_common import SNAPSHOTS, load_run_meta, experiment_case_dir, eval_point
 
@@ -15,7 +16,7 @@ save = True
 meta    = load_run_meta()
 N       = meta['n']
 case    = meta['case']
-out_dir = os.path.join(experiment_case_dir(case), 'axis_plots')
+out_dir = os.path.join(experiment_case_dir(case, N), 'axis_plots')
 os.makedirs(out_dir, exist_ok=True)
 
 # ── evaluation grid ───────────────────────────────────────────────────────────
@@ -58,12 +59,34 @@ for it in SNAPSHOTS:
 cmap   = plt.cm.viridis
 colors = cmap(np.linspace(0, 1, len(coeffs)))
 
+# For the radial case: fit Jüttner f_J(r) = A * exp(-r/T) from the final snapshot
+# and overlay it as an analytical equilibrium reference.
+juttner_params = None
+if case == 'radial' and coeffs:
+    _, final_coeff = coeffs[-1]
+    r_fit = np.linspace(0.1, 15.0, 300)
+    f_eq  = np.array([eval_point(final_coeff, r, 0.0, 0.0, N) for r in r_fit])
+    try:
+        popt, _ = curve_fit(lambda r, A, T: A * np.exp(-r / T), r_fit, f_eq, p0=[0.3, 2.5])
+        juttner_params = popt
+        print(f"Jüttner fit: A={popt[0]:.4f}, T={popt[1]:.4f}")
+    except Exception as e:
+        print(f"Jüttner fit failed: {e}")
+
+num_iters = meta.get('num_iterations', 10000)
+
 for axis in ['x', 'y', 'z']:
     fig, ax = plt.subplots(figsize=(9, 5))
 
     for color, (it, coeff) in zip(colors, coeffs):
-        label = f'iter {it}' + (' (IC)' if it == 0 else '') + (' (final)' if it == 10000 else '')
+        label = f'iter {it}' + (' (IC)' if it == 0 else '') + (' (final)' if it == num_iters else '')
         ax.plot(coord_vals, eval_axis(coeff, axis), color=color, label=label)
+
+    if juttner_params is not None:
+        A, T = juttner_params
+        j_vals = A * np.exp(-r_vals / T)
+        ax.plot(coord_vals, j_vals, 'k--', linewidth=1.5,
+                label=f'Jüttner  A={A:.3f}, T={T:.3f}')
 
     ax.set_title(f'time evolution of f along the ξ_{axis} axis')
     ax.set_xlabel(f'ξ_{axis}')

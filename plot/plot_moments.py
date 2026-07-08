@@ -58,7 +58,7 @@ for it in iters:
     for name, _ in INVARIANTS:
         series[name].append(moments[idx[name]])
 
-out_dir = os.path.join(experiment_case_dir(case), 'moments')
+out_dir = os.path.join(experiment_case_dir(case, n), 'moments')
 os.makedirs(out_dir, exist_ok=True)
 
 # ── CSV time series ───────────────────────────────────────────────────────────

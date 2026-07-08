@@ -71,8 +71,9 @@ The build is a chain of pickled artifacts; each stage consumes the previous stag
    The IC is chosen by the `CASE` flag — see "Initial-condition cases" below.
 6. **`plot/plot.py`** (1D along x/y/z axes) and **`plot/plot_heatmap.py`** (2D slices) read those
    snapshots and `run_meta.json`, and write figures **directly** into the per-case experiment folder
-   `time_evol/experiments/<case>/` — `axis_plots/`, and (from `plot_heatmap.py`, both views every
+   `time_evol/experiments/<case>_n<n>/` — `axis_plots/`, and (from `plot_heatmap.py`, both views every
    run) `heatmaps_direct/` (raw `f`, viridis) and `heatmaps_asymmetry/` (`F(u,v)−F(u,−v)`, coolwarm).
+   The folder includes `n` in its name so n=3 and n=4 results never share a directory.
    Shared helpers (`SNAPSHOTS`, `available_snapshots`, `load_run_meta`, `experiment_case_dir`,
    `eval_point`) live in `plot/plot_common.py` so the scripts don't duplicate the
    evaluation/output logic.
@@ -88,7 +89,7 @@ The build is a chain of pickled artifacts; each stage consumes the previous stag
    `mom_m0` (net p_z) is the case discriminator — see "Initial-condition cases".
 7. **`time_evol/export_experiment.py`** → final packaging step: reads `run_meta.json`, checks the
    figures (axis, heatmap, and moments) are present, and writes the LaTeX-ready `README.md` into
-   `time_evol/experiments/<case>/`. Run from `time_evol/` after the plot scripts. It no longer copies
+   `time_evol/experiments/<case>_n<n>/`. Run from `time_evol/` after the plot scripts. It no longer copies
    figures — they are already in place. The `experiments/` tree is gitignored; it is export output
    meant to be copied into the LaTeX writeup.
 

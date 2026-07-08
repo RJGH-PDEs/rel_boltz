@@ -83,7 +83,8 @@ def main():
         meta = json.load(f)
 
     case = meta['case']
-    out_dir = os.path.join(OUT_ROOT, case)
+    n    = meta['n']
+    out_dir = os.path.join(OUT_ROOT, f'{case}_n{n}')
     if not os.path.isdir(out_dir):
         raise SystemExit(
             f"missing {out_dir}/ — run plot.py and plot_heatmap.py (from plot/) first "
