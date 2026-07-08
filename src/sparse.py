@@ -98,9 +98,9 @@ def analyze(tensor_path, tol=1e-1, out_tag=''):
 
 if __name__ == "__main__":
     from collision_tensor import tensor_name
-    n            = 3
-    n_laguerre   = 7
-    n_lebedev    = 9
-    use_sparsity = False
+    n            = 4
+    n_laguerre   = 11
+    n_lebedev    = 13
+    use_sparsity = True
     tag          = ''
     analyze(tensor_name(n, n_laguerre, n_lebedev, use_sparsity, tag=tag), out_tag=tag)

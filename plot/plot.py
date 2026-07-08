@@ -20,7 +20,7 @@ os.makedirs(out_dir, exist_ok=True)
 
 # ── evaluation grid ───────────────────────────────────────────────────────────
 n_pts  = 200
-coord_vals = np.linspace(-10.0, 10.0, n_pts)
+coord_vals = np.linspace(-15.0, 15.0, n_pts)
 r_vals     = np.abs(coord_vals)
 
 # Evaluates f along a single Cartesian axis ('x', 'y', or 'z'). Each axis

@@ -11,9 +11,9 @@ sys.path.insert(0, '../src')
 from sparse import sparse_name
 
 # ── config ────────────────────────────────────────────────────────────────────
-n     = 3
-n_lag = 7
-n_leb = 9
+n     = 4
+n_lag = 11
+n_leb = 13
 # ─────────────────────────────────────────────────────────────────────────────
 
 pkl_path = f'../src/{sparse_name(n, n_lag, n_leb)}'

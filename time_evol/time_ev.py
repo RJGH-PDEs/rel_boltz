@@ -9,9 +9,9 @@ from mass_matrix import mass_name, load_mass
 from sparse import sparse_name, ind
 
 # ── parameters ────────────────────────────────────────────────────────────────
-n          = 3
-n_laguerre = 7
-n_lebedev  = 9
+n          = 4
+n_laguerre = 11
+n_lebedev  = 13
 tag        = ''   # e.g. '_postfix', '_tacc' — to load tensors/quadratures from a tagged run
 
 t0             = 1.0
@@ -65,20 +65,22 @@ CASE_INFO = {
         ),
     ),
 }
-CASE = 'zero_momentum'   # 'radial' | 'dipole' | 'zero_momentum'
+CASE = 'radial'   # 'radial' | 'dipole' | 'zero_momentum'
 
-f    = np.zeros(size)
-f[0] = 2.0    # ind(0,0,0,3)  hot radial base
-f[9] = -0.8   # ind(1,0,0,3)  (shared by all three cases)
+f     = np.zeros(size)
+f[0]  =  2.0    # ind(0,0,0,4)
+f[16] = -0.8    # ind(1,0,0,4)
+f[32] = -0.1    # ind(2,0,0,4)
+f[48] = -0.05   # ind(3,0,0,4)
 
 if CASE not in CASE_INFO:
     raise ValueError(f"unknown CASE: {CASE}")
 
 if CASE == 'dipole':
-    f[2] = 0.1             # ind(0,1,0,3)  dipole — carries net p_z, persists
+    f[2] = 0.1             # ind(0,1,0,4)  dipole — carries net p_z, persists
 elif CASE == 'zero_momentum':
-    f[11] = 0.1            # ind(1,1,0,3)
-    f[20] = 0.1 / sqrt(3)  # ind(2,1,0,3)  ratio cancels net p_z -> asymmetry decays
+    f[18] = 0.1            # ind(1,1,0,4)
+    f[34] = 0.1 / sqrt(3)  # ind(2,1,0,4)  ratio cancels net p_z -> asymmetry decays
 
 # ── run metadata (consumed by ../time_evol/export_experiment.py) ────────────────
 # Decode each nonzero IC index back to (k, l, m) using the project index map.
