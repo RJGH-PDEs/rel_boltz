@@ -95,6 +95,16 @@ def run_conservation_tests(n_laguerre=7, lebedev_orders=None):
         ("mass     [0,0,0] x [3,3, 1] x [3,3, 1]", [[0,0,0],[3,3, 1],[3,3, 1]]),
         ("energy   [1,0,0] x [3,3, 0] x [3,3, 0]", [[1,0,0],[3,3, 0],[3,3, 0]]),
         ("momentum [0,1,0] x [3,2,-1] x [2,3,-1]", [[0,1,0],[3,2,-1],[2,3,-1]]),
+        # l=4 trial functions: the worst case once n=5 is in play (n=4 only
+        # ever has l up to 3). All confirmed non-structural-zero via
+        # andrea/cai before trusting this sweep (see project convention
+        # established for the l=3 cases above).
+        ("mass     [0,0,0] x [4,4,-4] x [4,4,-4]", [[0,0,0],[4,4,-4],[4,4,-4]]),
+        ("mass     [0,0,0] x [4,4, 0] x [4,4, 0]", [[0,0,0],[4,4, 0],[4,4, 0]]),
+        ("energy   [1,0,0] x [4,4,-4] x [4,4,-4]", [[1,0,0],[4,4,-4],[4,4,-4]]),
+        ("mass     [0,0,0] x [4,4, 1] x [4,4, 1]", [[0,0,0],[4,4, 1],[4,4, 1]]),
+        ("energy   [1,0,0] x [4,4, 0] x [4,4, 0]", [[1,0,0],[4,4, 0],[4,4, 0]]),
+        ("momentum [0,1,0] x [4,3,-1] x [3,4,-1]", [[0,1,0],[4,3,-1],[3,4,-1]]),
     ]
 
     def eval_entry(select, quad_np):

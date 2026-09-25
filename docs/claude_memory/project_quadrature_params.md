@@ -1,6 +1,6 @@
 ---
 name: project-quadrature-params
-description: Verified quadrature parameters for the n=3 collision tensor — why n_lebedev=9 is the minimum
+description: Verified quadrature parameters for n=3/n=4/n=5 collision tensors — n_lebedev minimum 9/13/17, n_laguerre 7/11/11
 metadata: 
   node_type: memory
   type: project
@@ -94,3 +94,66 @@ increase from n=3's `(7, 9)`, not just on the angular side as first assumed.
 substantial jump — worth estimating total n=4 tensor compute cost (point
 count increase x larger sparse index set, since n=4 has more (k,l,m) triples
 than n=3) before launching on TACC.
+
+## n=5: confirmed n_laguerre=11 (unchanged), n_lebedev=17 (not 13) — 161,051,000 pts
+
+Repeated the same two-step, one-parameter-at-a-time diagnostic for n=5
+(introduces `l=4` trial functions). Added 6 new `l=4` conservation cases to
+`run_conservation_tests` in `src/tests.py` (mass `[0,0,0]x[4,4,-4]x[4,4,-4]`,
+`[0,0,0]x[4,4,0]x[4,4,0]`, `[0,0,0]x[4,4,1]x[4,4,1]`; energy
+`[1,0,0]x[4,4,-4]x[4,4,-4]`, `[1,0,0]x[4,4,0]x[4,4,0]`; mixed-l momentum
+`[0,1,0]x[4,3,-1]x[3,4,-1]`), mirroring the l=3 cases added for n=4. All 6
+confirmed non-structural-zero via `andrea`/`cai` before trusting the sweep.
+
+**Radial (n_laguerre) sweep first**, fixed cheap `n_lebedev=7`, using the l=4
+conservation cases directly (unlike the n=4 radial check, which needed a
+dedicated non-conserved "hardest entry" — here the conservation cases
+themselves were informative because, at insufficient n_laguerre, they don't
+converge to zero regardless of angular refinement; see below):
+
+```
+n_laguerre=7:   e.g. mass[4,4,-4] = -1.324801e+05
+n_laguerre=9:   e.g. mass[4,4,-4] = -1.445210e+05   (still moving)
+n_laguerre=11:  e.g. mass[4,4,-4] = -1.445211e+05   (Δ from 9: ~1e-6 rel)
+n_laguerre=13..19: unchanged to 6 sig figs
+```
+
+`n_laguerre=11` is sufficient — same value as n=4, did not need to grow
+further despite k now reaching 4.
+
+**Important trap avoided:** an earlier angular-only sweep at the *old* n=4
+fixed value `n_laguerre=7` (i.e. before running the radial check above) showed
+the l=4 conservation entries plateauing at a large **nonzero** value (~2,600
+to ~10,400) as `n_lebedev` rose from 13 to 19, and barely moving between 17
+and 19 — which looked like a genuine non-converging residual. It wasn't: it
+was a fixed, unresolved *radial* truncation error acting as a floor underneath
+the angular sweep, since `n_laguerre=7` is insufficient for l=4/k=4 entries
+(confirmed by the radial sweep above). **Always confirm the radial order
+first** before trusting an angular-only sweep's plateau value — an angular
+sweep run at too-low `n_laguerre` will look "converged" to the wrong nonzero
+answer instead of to zero.
+
+**Angular (n_lebedev) sweep, redone at the correct `n_laguerre=11`:**
+
+```
+n_lebedev=13  (49,032,104 pts, = existing saved n=4 quadrature, reused):
+    l=4 cases: -106 to +2,558   (badly wrong)
+n_lebedev=15  (76,962,776 pts, built in 5.7s):
+    l=4 cases: -891 to +47     (still wrong, shrinking)
+n_lebedev=17  (161,051,000 pts, built in 71.8s):
+    l=4 cases: 1e-9 to 1e-11   (machine zero — all 8 cases, including l=2/l=3 baselines)
+```
+
+**How to apply:** for n=5, use `n_laguerre=11` (unchanged from n=4) and
+`n_lebedev=17` (up from n=4's 13) together — **161,051,000 quadrature points**.
+This is `~3.28x` more points than n=4's 49,032,104, driven entirely by the
+angular side; sparse entry count is `285,750` (vs n=4's `44,480`, `~6.4x`
+more) — combined, about `~21x` more total tensor-assembly work than n=4. See
+[[project_fast_tensor_computation]] for what that projects to in wall-clock
+time and why it's now plausible at all.
+
+**Memory note:** the n=5 quadrature array itself is `161,051,000 * 9 * 8
+bytes ≈ 11.6 GB` — building it (even transiently, during the angular sweep
+above) is tight on a 17GB-RAM machine but fits. Materializing it fully
+alongside per-chunk basis tables for a full tensor run may not fit
+comfortably; see [[project_fast_tensor_computation]]'s open items.

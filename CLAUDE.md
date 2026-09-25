@@ -174,12 +174,31 @@ Quadrature orders are not free parameters; they were pinned by the conservation/
 - **n=3:** `n_laguerre=7`, `n_lebedev=9` (at `n_lebedev=7`, conservation fails for `l=2` entries).
 - **n=4:** `n_laguerre=11`, `n_lebedev=13` (the `l=3` entries need both; intermediate Lebedev orders
   are non-nested and can get *worse*, so don't trust them).
+- **n=5:** `n_laguerre=11` (unchanged from n=4), `n_lebedev=17` (up from 13, for the new `l=4`
+  entries) — 161,051,000 quadrature points. Quadrature order pinned; the full n=5 tensor has not
+  yet been computed (see `docs/claude_memory/project_fast_tensor_computation.md` for open items).
 
 `docs/claude_memory/` is a versioned backup of this project's accumulated findings — verified
 quadrature parameters, the chosen "hot radial" initial conditions, time-evolution run results and
-the `dt ∝ t0^{3/2}` stability rule, the basis-function fixes, and the known performance issue that
-`collision_quadrature()` needs a numpy-vectorized rewrite before `n=4` scale. Consult it before
-re-deriving any of these.
+the `dt ∝ t0^{3/2}` stability rule, and the basis-function fixes. Consult it before re-deriving any
+of these. (`collision_quadrature()`'s pure-Python-loop performance issue is already fixed — it's now
+a numpy-vectorized build, ~2.4s at n=4 scale.)
+
+## Fast table-based tensor computation (prototype — not yet the production path)
+
+`src/collision_tensor_fast.py` is a validated but not-yet-wired-in alternative to
+`collision_tensor.py`: instead of every `(test, f, g)` tensor entry independently re-deriving the
+kernel, post-collision kinematics, and basis values at every quadrature point (what
+`collision_tensor.py`/`integrand_numba.py` do today), it precomputes those once — a per-point table
+(kernel + post-collision coords, size `N_quad`) and a per-`(k,l,m)`-triple basis-value table (size
+`n**3 x N_quad`, only `n**3` distinct triples instead of re-deriving per entry) — then assembles
+every tensor entry as pure table lookups inside one `@njit(parallel=True)` kernel.
+`compute_tensor_fast_chunked` processes the quadrature in memory-bounded blocks (table memory doesn't
+fit in RAM unchunked past n=3). Validated to floating-point roundoff against both the n=3 and n=4
+production tensors, ~20x faster, and turned n=4 (previously TACC-only) into a ~34-minute local run.
+See `docs/claude_memory/project_fast_tensor_computation.md` for full validation numbers, the n=5
+projection (~11.5h locally / ~1h on a large TACC node), and the open memory-chunking item that needs
+resolving before a full n=5 run is attempted.
 
 ## k_i scaling write-up (`docs/tensor_k_scaling.tex`)
 
