@@ -1,6 +1,6 @@
 ---
 name: project_fast_tensor_computation
-description: Table-based collision-tensor prototype (src/collision_tensor_fast.py) — ~20x faster than the production pipeline, validated at n=3/n=4, n=5 quadrature order pinned but full n=5 run not yet attempted
+description: Table-based collision-tensor prototype (src/collision_tensor_fast.py) — ~20x faster than the production pipeline, validated at n=3/n=4/n=5-shape; n=5 quadrature saved and gated, TACC job (job_n5.sh) ready to submit
 metadata:
   node_type: memory
   type: project
@@ -89,43 +89,70 @@ Calibrated rate from both real data points: **~0.9 ns per (entry x
 quadrature-point) pair** on this 10-core machine (`total_time ≈ entries *
 N_quad * 9e-10` seconds) — used for the n=5 projection below.
 
-## n=5 status: quadrature order pinned, full tensor run **not yet attempted**
+## n=5 status: quadrature built+saved+re-verified, code smoke-tested at n=5
+shape, TACC job written — **full production run not yet submitted**
 
 Quadrature order confirmed via [[project_quadrature_params]]'s n=5 section:
 `n_laguerre=11, n_lebedev=17` → **161,051,000 points**. Sparse entry count
-(pure combinatorics, already checked): **285,750** (`n**3=125` basis
-triples), vs n=4's 44,480 — entries grew `6.4x`, quadrature points grew
-`3.28x`, combined **~21x more total work than n=4**.
+(pure combinatorics): **285,750** (`n**3=125` basis triples), vs n=4's
+44,480 — entries grew `6.4x`, quadrature points grew `3.28x`, combined
+`~21x` more total work than n=4.
 
-**Time projection** (using the calibrated 0.9ns/pair rate — NOT yet an actual
-measured run): `285,750 * 161,051,000 * 9e-10 ≈ 41,400s ≈ 11.5 hours`
-locally on this 10-core machine; `≈ 1 hour` on a ~128-core TACC node. Much
-better than a first (wrong) speculative guess of 21-50 hours made before the
-real n=5 quadrature order was known (that guess assumed both n_laguerre and
-n_lebedev would need to grow further; n_laguerre in fact did not).
+**Quadrature built and saved:** `src/quadratures/collision_lag11_leb17.pkl`
+(161,051,000 pts, ~11.6 GB, built in 24.4s via the already-vectorized
+`collision_quadrature`). Re-ran the l=2/l=3/l=4 conservation cases against
+this *saved* file (not just the in-memory sweep from the day before): all 8
+cases still machine-zero (`1e-9` to `1e-11`), identical to the sweep —
+confirms the saved file is correct and is the final go/no-go gate this
+project's convention calls for before spending real compute budget.
 
-**Open items before attempting the full n=5 run:**
-1. **Memory risk not yet resolved:** `compute_tensor_fast_chunked` currently
-   loads the *entire* quadrature into memory (via `load_quad` +
-   `np.asarray`) before slicing it into chunks for the table-build step. At
-   n=5 that quadrature array alone is `~11.6 GB`; adding a few GB of
-   per-chunk basis tables on top pushes close to this machine's 17 GB
-   ceiling. Needs the quadrature *generation/loading* itself chunked (or
-   built directly per-chunk from `collision_quadrature`'s node/weight
-   factors, never materializing the full `(161M, 9)` array), not just the
-   basis-table step, before a real n=5 run is attempted.
-2. The n=5 quadrature has not yet been built/saved to
-   `src/quadratures/collision_lag11_leb17.pkl` — only individual sweep
-   evaluations were run so far (not saved to disk).
-3. `collision_tensor_fast.py` is a validated **prototype**, not wired into
-   the production pipeline in place of `src/collision_tensor.py` — stage 4
-   (`src/sparse.py`) and downstream stages still expect
-   `collision_tensor.py`'s output format (`{'results': [...], 'n', 'n_laguerre', 'n_lebedev', 'use_sparsity', 'tag'}`, which `compute_tensor_fast[_chunked]`'s
-   return value already matches structurally, but this hasn't been exercised
-   end-to-end through `sparse.py` yet).
+**Full n=5 pipeline smoke-tested at real n=5 shape** (125 basis triples,
+285,750 entries — untested shapes before today) on a 200,000-point slice of
+the real n=5 quadrature (0.12% of the full 161M): `precompute_points`,
+`build_basis_tables`, `assemble` all ran without error, no NaN/Inf, sane
+output values. This is a shape/crash smoke test only — the *values* aren't
+meaningful at this point count, only that the n=5-sized arrays/kernels work.
 
-**How to apply:** before launching an 11.5-hour local (or TACC) n=5 run,
-resolve open item 1 (chunk the quadrature load itself), then build/save the
-`(11,17)` quadrature once, then re-run `src/tests.py`'s conservation sweep
-against the *saved* quadrature file as a final sanity check before spending
-the compute budget on the full tensor.
+**Refined time projection** (from this real n=5 slice, not cross-n
+extrapolation): 35.5s total for 285,750 entries x 200,000 points → scales
+linearly (by design — no data-dependent branching that changes cost with
+point count) to `35.5 * (161,051,000/200,000) ≈ 28,590s ≈ 7.9 hours` locally
+(10 cores); `≈ 37 minutes` on a 128-core TACC node. Better than both the
+initial wrong guess (21-50h, before the real quadrature order was known) and
+the cross-n-calibrated guess (11.5h locally / ~1h TACC) from the day before.
+
+**TACC job written:** `job_n5.sh` (repo root) + `src/run_n5_tensor.py`,
+modeled structurally on the sibling `numba_landau` project's `job_n6.sh` (a
+proven working TACC template for the same kind of numba-`prange`-parallel
+workload) — **not a dependency on that project**, fully self-contained to
+rel_boltz. `run_n5_tensor.py` builds-or-loads the `(11,17)` quadrature, calls
+`compute_tensor_fast_chunked` with `chunk_size=10_000_000` (targets ~40 GB
+basis-table memory per chunk, safe on any node >=64 GB RAM — tune upward if
+the actual TACC node memory is confirmed larger), and saves to
+`results/tensor_n5_lag11_leb17_sparse_fast.pkl` via `collision_tensor.py`'s
+own `tensor_name()` naming convention. `job_n5.sh` requests `-N 1 -n 128`,
+allocation `DMS23021`, `-p normal`, `-t 2:00:00` (comfortable margin over the
+~37min projection), `cd`s into
+`/work/09611/rodrigojosegonzalez/ls6/research/rel_boltz/src` — **this exact
+path is an assumption by analogy with numba_landau's TACC layout, not
+verified; confirm/adjust before submitting.**
+
+**Resolved from the prior open-items list:**
+1. The local-machine memory risk (quadrature array + chunked tables
+   approaching this 17GB laptop's ceiling) is **moot for the TACC run** — ls6
+   `normal`-queue nodes have far more RAM than the ~11.6GB quadrature array
+   alone, so `compute_tensor_fast_chunked`'s full-quadrature-in-memory
+   loading is not a blocker there. (Still worth fixing eventually for
+   portability to smaller machines, but not gating this run.)
+2. n=5 quadrature: built, saved, re-verified against the saved file (above).
+3. `sparse.py` compatibility: confirmed by reading `sparse.py` directly —
+   `load_operator`/`non_zeros`/`check_sparsity`/`simple_index`/`build_sparse`
+   all consume exactly the `{'results': [[select, val], ...], 'n', 'n_laguerre', 'n_lebedev'}`
+   shape that `compute_tensor_fast[_chunked]` already produces. No code
+   changes needed. (Minor, non-blocking: `check_sparsity` prints one line per
+   non-zero entry, which will be a lot of output at n=5's entry counts —
+   cosmetic only.)
+
+**How to apply:** confirm the `$WORK` path (and email/allocation if they've
+changed) in `job_n5.sh`, `git push` from here, pull on TACC, `sbatch job_n5.sh`
+from the repo root.

@@ -175,8 +175,9 @@ Quadrature orders are not free parameters; they were pinned by the conservation/
 - **n=4:** `n_laguerre=11`, `n_lebedev=13` (the `l=3` entries need both; intermediate Lebedev orders
   are non-nested and can get *worse*, so don't trust them).
 - **n=5:** `n_laguerre=11` (unchanged from n=4), `n_lebedev=17` (up from 13, for the new `l=4`
-  entries) — 161,051,000 quadrature points. Quadrature order pinned; the full n=5 tensor has not
-  yet been computed (see `docs/claude_memory/project_fast_tensor_computation.md` for open items).
+  entries) — 161,051,000 quadrature points, built and saved to
+  `src/quadratures/collision_lag11_leb17.pkl`. TACC job ready (`job_n5.sh` + `src/run_n5_tensor.py`);
+  full tensor not yet computed (see `docs/claude_memory/project_fast_tensor_computation.md`).
 
 `docs/claude_memory/` is a versioned backup of this project's accumulated findings — verified
 quadrature parameters, the chosen "hot radial" initial conditions, time-evolution run results and
@@ -196,9 +197,11 @@ every tensor entry as pure table lookups inside one `@njit(parallel=True)` kerne
 `compute_tensor_fast_chunked` processes the quadrature in memory-bounded blocks (table memory doesn't
 fit in RAM unchunked past n=3). Validated to floating-point roundoff against both the n=3 and n=4
 production tensors, ~20x faster, and turned n=4 (previously TACC-only) into a ~34-minute local run.
-See `docs/claude_memory/project_fast_tensor_computation.md` for full validation numbers, the n=5
-projection (~11.5h locally / ~1h on a large TACC node), and the open memory-chunking item that needs
-resolving before a full n=5 run is attempted.
+The n=5 pipeline is smoke-tested at real shape (125 basis triples, 285,750 entries) and projects to
+~7.9h locally / ~37min on a 128-core TACC node. `job_n5.sh` (repo root) + `src/run_n5_tensor.py` are
+a ready-to-submit TACC job (adapted structurally from the sibling `numba_landau` project's working
+template — not a dependency on it). See `docs/claude_memory/project_fast_tensor_computation.md` for
+full validation numbers and what to double-check (the `$WORK` path in `job_n5.sh`) before submitting.
 
 ## k_i scaling write-up (`docs/tensor_k_scaling.tex`)
 
