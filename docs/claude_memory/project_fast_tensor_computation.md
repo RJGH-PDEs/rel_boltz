@@ -156,3 +156,56 @@ verified; confirm/adjust before submitting.**
 **How to apply:** confirm the `$WORK` path (and email/allocation if they've
 changed) in `job_n5.sh`, `git push` from here, pull on TACC, `sbatch job_n5.sh`
 from the repo root.
+
+## Update (2026-09-26, live idev test on ls6): real per-chunk rate is much
+worse than the cross-machine projection — checkpointing added, walltime bumped
+
+Ran `run_n5_tensor.py` live in an `idev` session (confirmed `-N 1`,
+`NUMBA_DEFAULT_NUM_THREADS=128`, `chunk_size=10_000_000`, 17 chunks). Real
+measured numbers:
+- Quadrature build: 8.5s (faster than the 24.4s measured on the M4 laptop —
+  this specific step is not the bottleneck).
+- **Chunk 1/17: 874.8s (~14.6 min).** Extrapolated: `17 * 874.8s ≈ 14,872s ≈
+  4.1 hours` total — not the ~37min cross-machine-calibrated projection.
+
+**Why the projection was so far off:** the projection assumed TACC's 128
+cores would give roughly `12.8x` the throughput of the M4 laptop's 10 cores
+(the user separately guessed each TACC core might be individually ~2x
+slower, which would still net ~6.4x). The actual measured ratio was only
+**~1.95x** (TACC rate 3.06e-10 s/(entry×point) vs local 5.97e-10) — implying
+TACC's *per-core* throughput here is only ~1/6.6 of an M4 core's for this
+specific workload, a much bigger gap than "cores are 2x slower" alone
+explains. Best explanation: building + reducing over ~40GB of basis tables
+with 119-way parallelism is memory-bandwidth-bound, not compute-bound, and
+bandwidth doesn't scale with thread count the way FLOPs do — 128 threads all
+hammering the same memory system can hit a bandwidth ceiling well short of
+a naive core-count multiplier. **Not yet tested:** whether a smaller
+`chunk_size` (less memory pressure per chunk, more chunks) parallelizes
+better in practice — worth an experiment before the next long TACC run if
+there's idle time to spend on it.
+
+**Consequence:** at idev's ~30min-remaining budget when this was discovered,
+the run was killed (not enough time left for even chunk 2, and no
+checkpointing existed yet, so continuing would have produced nothing
+recoverable). Two fixes made in response, both already committed:
+1. **Checkpointing added to `compute_tensor_fast_chunked`** (`checkpoint_path`
+   parameter): saves `{totals, next_chunk}` after every chunk, atomically
+   (temp file + `os.replace`), and auto-resumes from it if the file exists
+   and matches the run's `(n, chunk_size, N_quad, entry count)`. Verified
+   correct on n=3: a full checkpointed run matches the known-good baseline
+   (same roundoff-level noise as always), and calling it again against a
+   fully-completed checkpoint returns identical totals near-instantly
+   (skips the chunk loop entirely) rather than recomputing. `run_n5_tensor.py`
+   now passes `checkpoint_path='results/n5_lag11_leb17_checkpoint.pkl'`.
+2. **`job_n5.sh`'s walltime bumped from 2h to 6h** (comment in the script
+   cites the 874.8s/chunk measurement and the ~4.1h projection it implies).
+   If 6h still isn't enough, checkpointing means simply resubmitting the
+   same job script resumes from the last completed chunk instead of
+   restarting — no lost work, no manual bookkeeping needed.
+
+**How to apply:** don't trust a cross-machine (laptop → TACC) timing
+projection for this workload without a live single-chunk measurement on the
+actual target node first — the core-count ratio alone was off by ~3.3x here.
+If re-tuning for speed later, try a smaller `chunk_size` on TACC and compare
+per-chunk elapsed time normalized by point count; if bandwidth-bound, smaller
+chunks may reduce total wall-clock despite more chunk-loop overhead.

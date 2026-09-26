@@ -29,6 +29,8 @@ Math must match `integrand_numba.operator_numba` exactly:
                 * mu_f1*mu_g2 * ( phi_f1(p_post)*phi_g2(q_post)
                                   - phi_f1(p_pre)*phi_g2(q_pre) )
 """
+import os
+import pickle
 import time
 
 import numpy as np
@@ -208,7 +210,8 @@ def compute_tensor_fast(n, quad_path, use_sparsity=True):
     return results
 
 
-def compute_tensor_fast_chunked(n, quad_path, use_sparsity=True, chunk_size=1_500_000):
+def compute_tensor_fast_chunked(n, quad_path, use_sparsity=True, chunk_size=1_500_000,
+                                 checkpoint_path=None):
     """
     Same math as compute_tensor_fast, but the basis tables (n**3, N_quad) are
     never materialized for the full quadrature at once -- only for one
@@ -220,6 +223,16 @@ def compute_tensor_fast_chunked(n, quad_path, use_sparsity=True, chunk_size=1_50
     Table memory per chunk is 4 * n**3 * chunk_size * 8 bytes; pick
     chunk_size to fit comfortably in RAM (n**3 grows fast: 27 at n=3, 64 at
     n=4, 125 at n=5), e.g. via table_memory_budget_chunk_size below.
+
+    checkpoint_path: if given, the running per-entry totals (plus which chunk
+    to resume from) are saved after every chunk, and resumed from
+    automatically if the file already exists at start and matches this run's
+    (n, chunk_size, N_quad, entry count) -- so a run killed partway through
+    (walltime limit, preemption, ...) loses at most one in-progress chunk, not
+    everything. Only the small totals array is checkpointed; selects/tables
+    are cheap to re-derive deterministically on resume, not worth saving.
+    Written atomically (write to a temp file, then os.replace) so a kill
+    mid-write can't corrupt the checkpoint.
     """
     quad, n_lag, n_leb = load_quad(quad_path)
     quad = np.ascontiguousarray(np.asarray(quad, dtype=np.float64))
@@ -246,9 +259,24 @@ def compute_tensor_fast_chunked(n, quad_path, use_sparsity=True, chunk_size=1_50
     print(f"basis table memory per chunk: {table_gb:.2f} GB")
 
     totals = np.zeros(n_e, dtype=np.float64)
+    start_chunk = 0
+
+    if checkpoint_path and os.path.exists(checkpoint_path):
+        with open(checkpoint_path, 'rb') as f:
+            ckpt = pickle.load(f)
+        matches = (ckpt.get('n') == n and ckpt.get('chunk_size') == chunk_size
+                   and ckpt.get('n_quad') == N and len(ckpt.get('totals', [])) == n_e)
+        if matches:
+            totals = ckpt['totals']
+            start_chunk = ckpt['next_chunk']
+            print(f"resuming from checkpoint {checkpoint_path}: "
+                  f"chunks 1-{start_chunk}/{n_chunks} already done", flush=True)
+        else:
+            print(f"checkpoint {checkpoint_path} doesn't match this run's "
+                  f"parameters -- ignoring it, starting from chunk 1", flush=True)
 
     t0 = time.time()
-    for c in range(n_chunks):
+    for c in range(start_chunk, n_chunks):
         lo = c * chunk_size
         hi = min(N, lo + chunk_size)
         qc = quad[lo:hi]
@@ -270,6 +298,13 @@ def compute_tensor_fast_chunked(n, quad_path, use_sparsity=True, chunk_size=1_50
         totals += chunk_values
         print(f"  chunk {c + 1}/{n_chunks}  ({hi:,}/{N:,} points)  "
               f"elapsed: {time.time() - t0:.1f}s", flush=True)
+
+        if checkpoint_path:
+            tmp_path = checkpoint_path + '.tmp'
+            with open(tmp_path, 'wb') as f:
+                pickle.dump({'totals': totals, 'next_chunk': c + 1,
+                             'n': n, 'chunk_size': chunk_size, 'n_quad': N}, f)
+            os.replace(tmp_path, checkpoint_path)
 
     t1 = time.time()
     print(f"TOTAL assembly across all chunks: {t1 - t0:.2f}s")
