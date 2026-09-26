@@ -1,3 +1,4 @@
+import os
 import pickle
 import numpy as np
 from scipy.special import roots_genlaguerre
@@ -90,6 +91,7 @@ def collision_quadrature(n_laguerre, n_lebedev):
 # ── save / load ───────────────────────────────────────────────────────────────
 
 def save_quad(quad, path, n_laguerre, n_lebedev):
+    os.makedirs(os.path.dirname(path), exist_ok=True)
     data = {'quad': quad, 'n_laguerre': n_laguerre, 'n_lebedev': n_lebedev}
     with open(path, 'wb') as f:
         pickle.dump(data, f)
