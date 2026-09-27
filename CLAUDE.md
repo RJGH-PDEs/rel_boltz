@@ -183,6 +183,16 @@ antisymmetric pairs to zero). When adding conservation cases for a future `n`, i
 `f1 != f2` momentum/energy pair and check the antisymmetrized sum, not just individual-entry
 convergence to zero.
 
+**This was later upgraded from a sample to a complete, rigorous check.** For a conserved test
+function `t`, `M_t[f1,f2] = T[t,f1,f2]` is an `(n**3, n**3)` matrix, and `Q(f,f)_t = f^T M_t f` for
+*any* coefficient vector `f` — that quadratic form vanishes for every `f` iff `M_t` is *exactly*
+antisymmetric (`M_t = -M_t^T`; a quadratic form only sees a matrix's symmetric part). Built the
+actual matrix for each of the 5 conserved test functions from the raw n=5 tensor: energy and all
+three momentum slices are antisymmetric to `~1e-12`–`1e-13` relative precision across the *entire*
+slice (not just sampled entries) — an `f`-independent conservation guarantee. Mass's slice is the
+zero matrix to roundoff (`~1e-7`, stronger than antisymmetry — it holds per-entry). See
+`docs/claude_memory/project_fast_tensor_computation.md` for the full numbers.
+
 ## Choosing quadrature orders (verified — see `docs/claude_memory/`)
 
 Quadrature orders are not free parameters; they were pinned by the conservation/convergence sweeps:

@@ -256,6 +256,60 @@ reveal one. **For n=6+: add at least one `f1 != f2` momentum/energy case to
 the conservation sweep, and check the antisymmetrized sum, not raw
 convergence to zero, to actually exercise this identity.**
 
-**n=5 status: COMPLETE.** Tensor computed, transferred, and validated. Next
-pipeline stage would be `src/sparse.py` (thresholding + CSR packaging) —
-not yet run for n=5.
+**n=5 status: COMPLETE.** Tensor computed, transferred, and validated. Ran
+`src/sparse.py` (see below) and did a rigorous full-slice antisymmetry check
+(also below) — both done.
+
+## `src/sparse.py` run for n=5
+
+`analyze(tensor_name(5,11,17,True,tag='_fast'), out_tag='_fast')`: 113,266
+non-zero entries (`tol=0.1`) out of 285,750, zero `andrea`/`cai` failures
+among them, 125 CSR matrices (one per test function) built and saved to
+`sparse_operators/sparse_n5_lag11_leb17_fast.pkl` (1.44 MB). `check_sparsity`
+prints one line per non-zero entry — 113,270 lines total — redirect to a
+file rather than the terminal at this scale (`src/sparse_n5_analyze.log`).
+
+## Rigorous conservation check: full-slice antisymmetry, not a sample
+
+The earlier antisymmetry finding (above) only sampled the 780
+*large-magnitude* momentum/energy entries and confirmed they paired up. A
+stronger, complete check: for a conserved test function `t`, `M_t[f1,f2] =
+T[t,f1,f2]` is an `(n**3, n**3)` matrix, and `Q(f,f)_t = f^T M_t f` for
+*any* coefficient vector `f`. That quadratic form vanishes for **every** `f`
+iff `M_t` is *exactly* antisymmetric (`M_t = -M_t^T`) — a quadratic form
+only sees a matrix's symmetric part, standard linear algebra. So checking
+whole-slice antisymmetry is an `f`-independent guarantee, strictly stronger
+than checking a handful of sampled entries.
+
+Built the actual `(125, 125)` matrix for each of the 5 conserved test
+functions directly from the raw (unthresholded) n=5 tensor and checked
+`M_t + M_t^T`:
+
+| slice | entries | missing swap-partner | `‖M‖_F` | `‖M+M^T‖_F` | relative |
+|---|---|---|---|---|---|
+| mass | 1,125 | 0 | 9.4e-08 | 1.18e-07 | 1.25 (see note) |
+| energy | 1,125 | 0 | 8.84e+05 | 1.79e-06 | **2.0e-12** |
+| mom_m-1 | 2,500 | 0 | 5.56e+06 | 1.39e-06 | **2.5e-13** |
+| mom_m0 | 1,400 | 0 | 5.56e+06 | 1.74e-06 | **3.1e-13** |
+| mom_m1 | 2,500 | 0 | 5.56e+06 | 1.42e-06 | **2.6e-13** |
+
+**Zero missing swap-partners for every slice** — not just verified for the
+large entries, structurally guaranteed: `andrea` (via `l1+l2-l`) and `cai`
+(via `abs(m1+m2)`/`abs(m1-m2)`) are both invariant under swapping
+`(l1,m1)<->(l2,m2)`, so `(t,f1,f2)` surviving sparsity pruning always
+implies `(t,f2,f1)` does too.
+
+**Energy and all three momentum slices are antisymmetric to `~1e-12` to
+`1e-13` relative precision — machine roundoff, across the *entire* slice,
+not a sample.** This is the complete, `f`-independent conservation guarantee.
+
+**Mass's `relative=1.25` is not a red flag** — it's noise divided by noise.
+Mass conservation holds *per entry* (stronger than antisymmetry: the whole
+`M_mass` slice is already the zero matrix to roundoff, `‖M‖_F ~ 9.4e-8`), so
+both the numerator and denominator of that "relative" ratio are themselves
+just floating-point noise around zero; the meaningful number is the absolute
+scale (`~1e-7`), which matches the roundoff floor seen everywhere else.
+
+**n=5 tensor: fully validated, both mechanically (combinatorics, sparsity
+rules, no NaN/Inf) and physically (rigorous, complete conservation check).**
+Ready for `time_evol/time_ev.py`.
