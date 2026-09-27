@@ -25,8 +25,10 @@ account), and is not covered by git — hence this in-repo backup.
   planned — builds n=4 scale in ~2.4s).
 - `project_fast_tensor_computation.md` — table-based collision-tensor
   prototype (`src/collision_tensor_fast.py`), ~20x faster than the production
-  `collision_tensor.py`, validated at n=3/n=4; n=5 quadrature order pinned but
-  full tensor run not yet attempted.
+  `collision_tensor.py`. n=3/n=4/n=5 tensors all computed and validated (n=5
+  on TACC, job 3472070, 4.38h) — includes the momentum/energy
+  antisymmetric-conservation subtlety (mass vanishes per-entry; momentum/
+  energy only vanish under the `f1<->f2` antisymmetrized sum).
 
 ## Restoring
 

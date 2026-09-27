@@ -167,6 +167,22 @@ integrals, numba-vs-scipy basis spot checks, a **conservation sweep** (`run_cons
 conserved-quantity entries should → 0 as `n_lebedev` rises; this is how quadrature orders are
 chosen), a convergence sweep, and `compare_tensors` to diff two saved tensors entry-by-entry.
 
+**Conservation-entry subtlety (found while validating the n=5 tensor):** mass conservation holds
+*per tensor entry*, for any `(f1, f2)` pair — `T[mass, f1, f2]` is analytically zero regardless of
+whether `f1 == f2`. Momentum and energy are **not** individually zero per entry in general; the
+conserved identity is `T[test, f1, f2] = -T[test, f2, f1]` (antisymmetric under swapping the two
+trial functions), which only forces `T` to zero when `f1 == f2`. Every hand-picked case in
+`run_conservation_tests` happens to use `f1 == f2` (e.g. `[4,4,-4]x[4,4,-4]`), so historically the
+sweep has only ever exercised the `f1==f2` special case — genuinely diagnostic for mass and for
+picking quadrature order overall, but **not** capable of catching a momentum/energy convergence
+problem that only shows up for `f1 != f2` pairs. Confirmed on the actual n=5 tensor: `f1 != f2`
+momentum/energy entries reach magnitudes up to `~1.6e6` individually, but `T[test,f1,f2] +
+T[test,f2,f1]` is `~1e-12` relative — the physically meaningful quantity (since the PDE only ever
+evaluates `Q(f,f)`, i.e. the same coefficient vector in both trial slots, which sums exactly these
+antisymmetric pairs to zero). When adding conservation cases for a future `n`, include at least one
+`f1 != f2` momentum/energy pair and check the antisymmetrized sum, not just individual-entry
+convergence to zero.
+
 ## Choosing quadrature orders (verified — see `docs/claude_memory/`)
 
 Quadrature orders are not free parameters; they were pinned by the conservation/convergence sweeps:
@@ -176,8 +192,9 @@ Quadrature orders are not free parameters; they were pinned by the conservation/
   are non-nested and can get *worse*, so don't trust them).
 - **n=5:** `n_laguerre=11` (unchanged from n=4), `n_lebedev=17` (up from 13, for the new `l=4`
   entries) — 161,051,000 quadrature points, built and saved to
-  `src/quadratures/collision_lag11_leb17.pkl`. TACC job ready (`job_n5.sh` + `src/run_n5_tensor.py`);
-  full tensor not yet computed (see `docs/claude_memory/project_fast_tensor_computation.md`).
+  `src/quadratures/collision_lag11_leb17.pkl`. Full tensor **computed on TACC** (job 3472070,
+  4.38h, `results/tensor_n5_lag11_leb17_sparse_fast.pkl`, 285,750 entries) and validated (see
+  `docs/claude_memory/project_fast_tensor_computation.md`).
 
 `docs/claude_memory/` is a versioned backup of this project's accumulated findings — verified
 quadrature parameters, the chosen "hot radial" initial conditions, time-evolution run results and
@@ -197,11 +214,13 @@ every tensor entry as pure table lookups inside one `@njit(parallel=True)` kerne
 `compute_tensor_fast_chunked` processes the quadrature in memory-bounded blocks (table memory doesn't
 fit in RAM unchunked past n=3). Validated to floating-point roundoff against both the n=3 and n=4
 production tensors, ~20x faster, and turned n=4 (previously TACC-only) into a ~34-minute local run.
-The n=5 pipeline is smoke-tested at real shape (125 basis triples, 285,750 entries) and projects to
-~7.9h locally / ~37min on a 128-core TACC node. `job_n5.sh` (repo root) + `src/run_n5_tensor.py` are
-a ready-to-submit TACC job (adapted structurally from the sibling `numba_landau` project's working
-template — not a dependency on it). See `docs/claude_memory/project_fast_tensor_computation.md` for
-full validation numbers and what to double-check (the `$WORK` path in `job_n5.sh`) before submitting.
+The n=5 tensor has been computed on TACC (`job_n5.sh` + `src/run_n5_tensor.py`, adapted structurally
+from the sibling `numba_landau` project's working template — not a dependency on it; ran 4.38h on
+128 cores, checkpointing after every chunk via `checkpoint_path` so a killed/timed-out run resumes
+instead of restarting) and validated: exact combinatorial match to the expected select set, zero
+sparsity-rule violations, no NaN/Inf, mass conservation at the roundoff floor, and momentum/energy
+conservation confirmed via the antisymmetric-pair check described in "Verification" above. See
+`docs/claude_memory/project_fast_tensor_computation.md` for full numbers.
 
 ## k_i scaling write-up (`docs/tensor_k_scaling.tex`)
 

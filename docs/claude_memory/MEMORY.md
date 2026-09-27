@@ -5,4 +5,4 @@
 - [Time evolution runs](project_time_evolution.md) — stable run at t0=1.0, dt=1e-3; stability rule dt ∝ t0^{3/2}
 - [Basis function bug fixes](project_basis_function_fixes.md) — assoc_legendre pole bug + basis_eval dedup, no impact on n=3 results
 - [Quadrature build performance](project_quadrature_build_performance.md) — collision_quadrature() FIXED, now numpy-vectorized (~2.4s at n=4 scale)
-- [Fast table-based tensor computation](project_fast_tensor_computation.md) — src/collision_tensor_fast.py, ~20x faster, validated at n=3/n=4; n=5 order pinned, full run not yet attempted (memory risk open)
+- [Fast table-based tensor computation](project_fast_tensor_computation.md) — src/collision_tensor_fast.py, ~20x faster; n=3/n=4/n=5 tensors all computed and validated (n=5 on TACC, 4.38h) — includes the momentum/energy antisymmetric-conservation subtlety

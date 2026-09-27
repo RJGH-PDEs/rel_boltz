@@ -209,3 +209,53 @@ actual target node first — the core-count ratio alone was off by ~3.3x here.
 If re-tuning for speed later, try a smaller `chunk_size` on TACC and compare
 per-chunk elapsed time normalized by point count; if bandwidth-bound, smaller
 chunks may reduce total wall-clock despite more chunk-loop overhead.
+
+## Update (2026-09-27): n=5 tensor computed on TACC and validated — DONE
+
+`sbatch job_n5.sh` → **job 3472070**, `normal` queue, ran **15,782.83s
+(~4.38h)**, no errors, 17/17 chunks completed, saved
+`src/results/tensor_n5_lag11_leb17_sparse_fast.pkl` (`scp`'d back to this
+machine for verification). Close to the 4.1h projection from the live idev
+chunk-1 measurement — the cross-machine (laptop-calibrated) projection had
+been the wrong one, as already flagged above.
+
+**Validation performed on the actual computed tensor** (285,750 entries):
+1. Exact combinatorial match to `create_param_iterable(5, True)`'s select
+   set (no missing/extra entries).
+2. Zero `andrea`/`cai` sparsity-rule violations among computed entries.
+3. No NaN/Inf.
+4. **Conservation check, done properly this time** — see the important
+   subtlety below.
+
+**Important subtlety found while doing check 4 (worth internalizing for any
+future n):** naively grepping the computed tensor for entries whose test
+function is a conserved quantity (`[0,0,0]` mass, `[1,0,0]` energy,
+`[0,1,-1/0/1]` momentum) and expecting them all near zero **fails** — 780 of
+8650 such entries have magnitude up to `~1.6e6` (momentum) / `~2.3e5`
+(energy). This is not a bug: **mass conservation holds *per entry*, for any
+`(f1,f2)` pair, but momentum/energy conservation is the antisymmetric
+identity `T[test,f1,f2] = -T[test,f2,f1]`**, which only forces an individual
+entry to zero when `f1==f2`. Checked directly: every one of the 780
+large-magnitude entries has its `f1<->f2` swap present in the sparse set,
+and `T[test,f1,f2] + T[test,f2,f1]` has max relative residual `3.4e-12` —
+the same roundoff floor seen everywhere else in this project. Since the
+actual PDE only ever evaluates `Q(f,f)` (`CLAUDE.md`'s `df/dt =
+½t^{-3/2}M⁻¹Q(f,f)` — the *same* coefficient vector in both trial slots),
+this antisymmetric sum is exactly the quantity that matters, and it's clean.
+
+This also retroactively explains why the n=3/n=4/n=5 quadrature-pinning
+sweeps in [[project_quadrature_params]] (`run_conservation_tests`'s
+hand-picked cases) never caught this: every one of those cases happens to
+use `f1 == f2` (e.g. `[4,4,-4]x[4,4,-4]`) — which is mathematically forced
+to zero by the antisymmetry alone, regardless of quadrature quality. Those
+sweeps were still valid for choosing quadrature order (mass genuinely needs
+per-entry convergence, and the `f1==f2` cases are real stress tests for
+*that*), but they were structurally incapable of diagnosing a
+momentum/energy convergence problem, since only `f1 != f2` pairs could ever
+reveal one. **For n=6+: add at least one `f1 != f2` momentum/energy case to
+the conservation sweep, and check the antisymmetrized sum, not raw
+convergence to zero, to actually exercise this identity.**
+
+**n=5 status: COMPLETE.** Tensor computed, transferred, and validated. Next
+pipeline stage would be `src/sparse.py` (thresholding + CSR packaging) —
+not yet run for n=5.

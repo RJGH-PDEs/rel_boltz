@@ -157,3 +157,18 @@ bytes ≈ 11.6 GB` — building it (even transiently, during the angular sweep
 above) is tight on a 17GB-RAM machine but fits. Materializing it fully
 alongside per-chunk basis tables for a full tensor run may not fit
 comfortably; see [[project_fast_tensor_computation]]'s open items.
+
+**Methodological gap found later, worth fixing for n=6+:** every conservation
+case above (both the l=3 and l=4 additions) uses `f1 == f2` (e.g.
+`[4,4,-4]x[4,4,-4]`). That's a valid, real stress test for **mass**
+conservation (which holds per-entry for any `f1,f2`) but is mathematically
+incapable of testing momentum/energy convergence, since those are only
+guaranteed by the antisymmetric identity `T[test,f1,f2]=-T[test,f2,f1]`,
+which is automatically satisfied (forced to `T=0`) whenever `f1==f2`,
+regardless of quadrature quality. Confirmed on the actual n=5 tensor: `f1 !=
+f2` momentum/energy entries can be large individually (up to `~1.6e6`) while
+still satisfying the antisymmetric sum to `~1e-12` relative — see
+[[project_fast_tensor_computation]]'s 2026-09-27 update for the full story.
+**When choosing the n=6 quadrature order, add at least one `f1 != f2`
+momentum/energy case and check `T[test,f1,f2]+T[test,f2,f1]` — the `f1==f2`
+cases alone cannot catch a momentum/energy convergence problem.**
