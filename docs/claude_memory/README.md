@@ -18,7 +18,8 @@ account), and is not covered by git — hence this in-repo backup.
 - `project_initial_condition.md` — the "hot" radial initial condition
   (coeff[0]=2.0, coeff[9]=-0.8, rest zero).
 - `project_time_evolution.md` — successful time-evolution runs, stability rule
-  dt ∝ t0^{3/2}, and plotting notes.
+  dt ∝ t0^{3/2}, and plotting notes. Includes the first n=5 run (radial + new
+  k=4 mode), validated against the analytical Jüttner equilibrium.
 - `project_basis_function_fixes.md` — assoc_legendre pole-collapse fix + basis_eval dedup.
 - `project_quadrature_build_performance.md` — collision_quadrature() was
   rewritten to a numpy-vectorized build (fix already implemented, not just

@@ -102,7 +102,9 @@ chain once per case (clear `plot/coeff/*.pkl` between runs so stale snapshots do
 
 - **`radial`** — no angular perturbation; isotropic control. Thermalizes to the isotropic Jüttner
   equilibrium; the asymmetry diagnostic stays at float64 roundoff (`~1e-16`). Moments: all three
-  `mom_*` identically 0.
+  `mom_*` identically 0. At `n=5`, includes a small `k=4` radial perturbation (`f[ind(4,0,0,5)]=-0.02`,
+  gated by `if n >= 5`) — the first dynamical exercise of the new n=5 radial mode; validated against
+  the analytical Jüttner equilibrium (see `docs/claude_memory/project_time_evolution.md`).
 - **`dipole`** — adds an `l=1,m=0` dipole (`f[2]`) carrying net `p_z`. Momentum is conserved, so the
   `p_z → −p_z` asymmetry **persists** (the equilibrium is boosted along z). Moments: `mom_m0` is a
   nonzero constant (`~15.68` for the standard IC).
@@ -203,8 +205,11 @@ Quadrature orders are not free parameters; they were pinned by the conservation/
 - **n=5:** `n_laguerre=11` (unchanged from n=4), `n_lebedev=17` (up from 13, for the new `l=4`
   entries) — 161,051,000 quadrature points, built and saved to
   `src/quadratures/collision_lag11_leb17.pkl`. Full tensor **computed on TACC** (job 3472070,
-  4.38h, `results/tensor_n5_lag11_leb17_sparse_fast.pkl`, 285,750 entries) and validated (see
-  `docs/claude_memory/project_fast_tensor_computation.md`).
+  4.38h, `results/tensor_n5_lag11_leb17_sparse_fast.pkl`, 285,750 entries), sparsified
+  (`sparse_operators/sparse_n5_lag11_leb17.pkl`, the canonical untagged name), and validated —
+  both statically (see `docs/claude_memory/project_fast_tensor_computation.md`) and dynamically,
+  via a full `time_ev.py` run matching the analytical Jüttner equilibrium (see
+  `docs/claude_memory/project_time_evolution.md`).
 
 `docs/claude_memory/` is a versioned backup of this project's accumulated findings — verified
 quadrature parameters, the chosen "hot radial" initial conditions, time-evolution run results and

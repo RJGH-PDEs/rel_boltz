@@ -1,6 +1,6 @@
 ---
 name: project-time-evolution
-description: Successful time evolution runs and stability parameters
+description: Successful time evolution runs and stability parameters; n=3/n=4 and now n=5 (radial + new k=4 mode, validated against the analytical Jüttner equilibrium)
 metadata: 
   node_type: memory
   type: project
@@ -92,6 +92,69 @@ stability theory — built from scratch in our own truncated basis, not just
 read about. Contrast directly with the dipole run above, which has the *same*
 angular shape (`l=1,m=0`) but carries real net momentum and therefore locks in
 forever instead of decaying.
+
+## Successful run: n=5, hot radial + new k=4 mode, t0=1.0 (2026-09-28)
+
+First time-evolution run at n=5, using the freshly-computed and validated
+n=5 tensor/sparse operator (see [[project_fast_tensor_computation]]). Same
+`t0=1.0, dt=1e-3, NUM_ITERATIONS=10000, save_every=100` as every n=4 run
+above — no stability issue found, despite n=5's mass matrix being far worse
+conditioned (`cond=6.67e11` vs n=4's `4.8e8`, n=3's `4.3e5` — geometrically
+worsening, but conservation held just as tight in practice; see below).
+
+Generated fresh for this run: `mass/mass_n5_lag11.pkl` (mass matrix, `cond`
+above), and copied the already-validated `sparse_operators/sparse_n5_lag11_leb17_fast.pkl`
+to the canonical untagged name `sparse_n5_lag11_leb17.pkl` (matching n=3/n=4's
+convention — tag is for *alternate* runs, and n=5 only has the one, now-canonical
+result).
+
+**Bug found and fixed while wiring this up:** `time_evol/time_ev.py` had
+hardcoded n=4-specific flat indices (`f[16]`, `f[32]`, `f[48]`, `f[2]`,
+`f[18]`, `f[34]`) instead of computing them via `ind(k,l,m,n)` — since the
+flat index's per-`k` stride is `n**2`, every one of those literals is wrong
+at any `n != 4`, silently. Generalized all IC-setting code (base radial part
+and every named case: `dipole`, `zero_momentum`, `radial_T2`,
+`radial_T2_full`) to use `ind(k,l,m,n)` — verified this reproduces the exact
+same flat indices at n=4 (no change to any prior published result), and is
+now correct at n=5 (and any future n).
+
+**IC:** hot radial base (`k=0..3`: `2.0, -0.8, -0.1, -0.05`, same as every
+prior `radial`-family case) plus a new small `k=4` perturbation (`-0.02`) —
+the first exercise, dynamically (not just as a static tensor entry), of the
+radial mode n=5 newly unlocks. Case name kept as `'radial'` (same physical
+setup as the n=3/n=4 `radial` case, just with n=5's extra available mode),
+gated behind `if n >= 5` so n=4 behavior is unchanged.
+
+**Result:** stable, no blow-up. `|f|` climbs from `2.157` (IC) to `2.392814`
+by iteration ~100 and stays *exactly* frozen through iteration 10000
+(`Q(f,f)` there is `~1e-7` to `1e-8`, i.e. at equilibrium). Final radial
+(`l=0`) coefficients: `k=0=+2.3582, k=1=-0.40102, k=2=+0.060024,
+k=3=-0.0045970, k=4=+0.0018075`. **None of the higher modes vanish** — this
+is expected and correct, not a bug: unlike `radial_T2`/`radial_T2_full`,
+this IC was never T-tuned to make the equilibrium land exactly on the `k=0`
+basis function, so the natural equilibrium temperature this IC implies
+projects onto every radial mode, including the new `k=4` one.
+
+**Independent equilibrium check:** the final state along the `ξ_x` axis
+*exactly* overlays the analytical Jüttner curve (`A=0.352, T=2.444`)
+computed independently from the IC's conserved mass/energy moments — visual
+confirmation the solver converges to the physically correct equilibrium
+implied by conservation, not just to *some* fixed point of the discrete
+operator.
+
+**Conservation** (`plot_moments.py`, all 10,000 saved snapshots): mass
+spread `7.25e-13`, energy spread `1.03e-8`, momentum exactly `0.0` throughout
+(purely radial IC, no angular content to carry momentum) — same tightness as
+every n=3/n=4 run, despite n=5's far worse mass-matrix conditioning. The
+conditioning concern (worth watching for n=6+) did not manifest as any
+numerical degradation here.
+
+Full export at `time_evol/experiments/radial_n5/`.
+
+**Why this matters:** first full pipeline validation (quadrature -> tensor ->
+sparse operator -> time evolution -> conservation/equilibrium check) at n=5,
+end to end, and the first *dynamical* exercise of the n=5-only k=4 radial
+mode (previously only checked as a static tensor entry).
 
 ## Plotting note
 

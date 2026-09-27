@@ -9,9 +9,9 @@ from mass_matrix import mass_name, load_mass
 from sparse import sparse_name, ind
 
 # ── parameters ────────────────────────────────────────────────────────────────
-n          = 4
+n          = 5
 n_laguerre = 11
-n_lebedev  = 13
+n_lebedev  = 17
 tag        = ''   # e.g. '_postfix', '_tacc' — to load tensors/quadratures from a tagged run
 
 t0             = 1.0
@@ -41,7 +41,14 @@ CASE_INFO = {
             "Isotropic hot initial state with no angular perturbation. The "
             "distribution stays spherically symmetric and thermalizes to the "
             "isotropic Jüttner equilibrium. Serves as the control: the "
-            "asymmetry diagnostic is identically zero throughout."
+            "asymmetry diagnostic is identically zero throughout. At n=5, "
+            "includes a small k=4 radial perturbation on top of the k=0..3 "
+            "base — the first dynamical exercise of the newly-available "
+            "radial mode. Unlike radial_T2/radial_T2_full, this IC isn't "
+            "T-tuned, so the equilibrium temperature it implies doesn't "
+            "coincide with the k=0 basis width: the true Jüttner projects "
+            "onto every radial mode, so k=1..4 settle to small nonzero "
+            "steady values (not zero) rather than decaying away."
         ),
     ),
     'dipole': dict(
@@ -87,34 +94,39 @@ CASE_INFO = {
         ),
     ),
 }
-CASE = 'radial_T2_full'   # 'radial' | 'dipole' | 'zero_momentum' | 'radial_T2' | 'radial_T2_full'
+CASE = 'radial'   # 'radial' | 'dipole' | 'zero_momentum' | 'radial_T2' | 'radial_T2_full'
 
-f     = np.zeros(size)
-f[0]  =  2.0    # ind(0,0,0,4)
-f[16] = -0.8    # ind(1,0,0,4)
-f[32] = -0.1    # ind(2,0,0,4)
-f[48] = -0.05   # ind(3,0,0,4)
+# Indices computed via ind(k,l,m,n) rather than hardcoded literals, so the
+# same case definitions stay correct if n changes (the flat index's per-k
+# stride is n**2, so n=4's literals like f[16]/f[32]/f[48] are wrong at n=5).
+f = np.zeros(size)
+f[ind(0,0,0,n)] =  2.0
+f[ind(1,0,0,n)] = -0.8
+f[ind(2,0,0,n)] = -0.1
+f[ind(3,0,0,n)] = -0.05
+if n >= 5:
+    f[ind(4,0,0,n)] = -0.02  # new radial mode unlocked at n=5; small further perturbation
 
 if CASE not in CASE_INFO:
     raise ValueError(f"unknown CASE: {CASE}")
 
 if CASE == 'dipole':
-    f[2] = 0.1             # ind(0,1,0,4)  dipole — carries net p_z, persists
+    f[ind(0,1,0,n)] = 0.1              # dipole — carries net p_z, persists
 elif CASE == 'zero_momentum':
-    f[18] = 0.1            # ind(1,1,0,4)
-    f[34] = 0.1 / sqrt(3)  # ind(2,1,0,4)  ratio cancels net p_z -> asymmetry decays
+    f[ind(1,1,0,n)] = 0.1
+    f[ind(2,1,0,n)] = 0.1 / sqrt(3)    # ratio cancels net p_z -> asymmetry decays
 elif CASE == 'radial_T2':
     # c1=-0.4, c2 tuned so E/(3M)=2 exactly; equilibrium is A*exp(-r/2) ∈ basis
-    f[0]  =  2.0       # ind(0,0,0,4)
-    f[16] = -0.4       # ind(1,0,0,4)
-    f[32] = -0.142199  # ind(2,0,0,4)  chosen so T=2
-    f[48] =  0.0       # ind(3,0,0,4)
+    f[ind(0,0,0,n)] =  2.0
+    f[ind(1,0,0,n)] = -0.4
+    f[ind(2,0,0,n)] = -0.142199  # chosen so T=2
+    f[ind(3,0,0,n)] =  0.0
 elif CASE == 'radial_T2_full':
     # all 4 modes; c2 tuned so E/(3M)=2 with c1=-0.4, c3=-0.1
-    f[0]  =  2.0       # ind(0,0,0,4)
-    f[16] = -0.4       # ind(1,0,0,4)
-    f[32] = -0.331730  # ind(2,0,0,4)  chosen so T=2
-    f[48] = -0.1       # ind(3,0,0,4)
+    f[ind(0,0,0,n)] =  2.0
+    f[ind(1,0,0,n)] = -0.4
+    f[ind(2,0,0,n)] = -0.331730  # chosen so T=2
+    f[ind(3,0,0,n)] = -0.1
 
 # ── run metadata (consumed by ../time_evol/export_experiment.py) ────────────────
 # Decode each nonzero IC index back to (k, l, m) using the project index map.
